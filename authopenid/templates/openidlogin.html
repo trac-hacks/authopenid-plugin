@@ -1,0 +1,21 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      py:strip="">
+
+  <py:match path="head" once="true"><head>
+    <title>Preferences: ${select('title/text()')}</title>
+    ${select("*[local-name() != 'title']")}
+    </head></py:match> 
+
+    <py:match path="body" once="true"><body>
+      <div id="ctxtnav" class="nav"></div>
+
+        OpenID Login
+  </body></py:match>
+
+  <xi:include href="layout.html" />
+</html>
