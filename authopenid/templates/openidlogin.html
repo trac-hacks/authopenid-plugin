@@ -3,19 +3,25 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:xi="http://www.w3.org/2001/XInclude"
-      xmlns:py="http://genshi.edgewall.org/"
-      py:strip="">
-
-  <py:match path="head" once="true"><head>
-    <title>Preferences: ${select('title/text()')}</title>
-    ${select("*[local-name() != 'title']")}
-    </head></py:match> 
-
-    <py:match path="body" once="true"><body>
-      <div id="ctxtnav" class="nav"></div>
-
-        OpenID Login
-  </body></py:match>
+      xmlns:py="http://genshi.edgewall.org/">
 
   <xi:include href="layout.html" />
+
+  <head>
+    <title>OpenID Login</title>
+  </head>
+
+  <body>
+    <div py:attrs="{'class': css_class}" py:content="message"/>
+    <div id="verify-form">
+      <form method="get" accept-charset="UTF-8" action="${action}">
+        Identifier:
+        <input type="text" name="openid_identifier" value="" />
+        <input type="submit" value="Verify" /><br />
+        <input type="checkbox" name="immediate" id="immediate" /><label for="immediate">Use immediate mode</label>
+        <input type="checkbox" name="use_sreg" id="use_sreg" /><label for="use_sreg">Request registration data</label>
+      </form>
+    </div>
+  </body>
+
 </html>

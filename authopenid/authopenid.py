@@ -4,32 +4,56 @@
 
 
 import pkg_resources
+import cgi
 
 from trac.core import *
-from trac.util.datefmt import all_timezones, get_timezone
 from trac.web.chrome import INavigationContributor, ITemplateProvider
+from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
 from trac.util import escape, Markup
 
 from genshi.builder import tag
 
-
-
 import re
 import time
 
-from trac.util import hex_entropy, md5crypt
+#from trac.util import hex_entropy, md5crypt
 from openid.store.sqlstore import MySQLStore
+from openid.store import memstore
+#from openid.store import filestore
 
-from openid.oidutil import appendArgs
-from openid.cryptutil import randomString
-from openid.fetchers import setDefaultFetcher, Urllib2Fetcher
+from openid.consumer import consumer
 from openid import sreg
 
 
 
+
 class AuthOpenIdPlugin(Component):
-    implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator)
+    implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
+
+    def __init__(self):
+        db = self.env.get_db_cnx()
+        self.store = self._getStore(db)
+
+    def _getStore(self, db):
+        #return memstore.MemoryStore()
+        return MySQLStore(db)
+
+    def _initStore(self, db):
+        self._getStore(db).createTables()
+
+    # IEnvironmentSetupParticipant methods
+
+    def environment_created(self):
+        db = self.env.get_db_cnx()
+        self._initStore(db)
+        db.commit()
+
+    def environment_needs_upgrade(self, db):
+        return False
+
+    def upgrade_environment(self, db):
+        self._initStore(db)
 
     # IAuthenticator methods
 
@@ -64,41 +88,172 @@ class AuthOpenIdPlugin(Component):
     # IRequestHandler methods
 
     def match_request(self, req):
-        return re.match('/(login|opeidprocess|logout)/?$', req.path_info)
+        return re.match('/(openidlogin|openidverify|openidprocess|openidlogout)\??.*', req.path_info)
 
     def process_request(self, req):
         if req.path_info.startswith('/openidlogin'):
-            self._do_login(req)
-        elif req.path_info.startswith('/opeidprocess'):
-            self._do_process(req)
-        elif req.path_info.startswith('/opeidverify'):
-            self._do_verify(req)
+            return self._do_login(req)
+        elif req.path_info.startswith('/openidverify'):
+            return self._do_verify(req)
+        elif req.path_info.startswith('/openidprocess'):
+            return self._do_process(req)
         elif req.path_info.startswith('/openidlogout'):
-            self._do_logout(req)
-        self._redirect_back(req)
+            return self._do_logout(req)
+        #self._redirect_back(req)
 
-    # IRequestHandler methods
-    def match_request(self, req):
-        return req.path_info == '/helloworld'
-
-    def process_request(self, req):
-        return 'openidlogin_login.html', {
-            'settings': {'session': req.session, 'session_id': req.session.sid},
-            'timezones': all_timezones, 'timezone': get_timezone
+    def _do_login(self, req):
+        return 'openidlogin.html', {
+            'action': req.href.openidverify(),
+            'message': 'Enter your OpenID URL',
+            'css_class': 'error'
         }, None
-        #req.send_response(200)
-        #req.send_header('Content-Type', 'text/plain')
-        #req.end_headers()
-        #req.write('Hello world!')
 
+    def _get_consumer(self, req):
+        session = req.session
+        session['id'] = req.session.sid
+        return consumer.Consumer(session, self.store)
 
-    # ITemplateProvider methods
+    def _request_registration_data(self, request):
+        sreg_request = sreg.SRegRequest(
+            required=['nickname'], optional=['fullname', 'email'])
+        request.addExtension(sreg_request)
+
+    def _do_verify(self, req):
+        """Process the form submission, initating OpenID verification.
+        """
+
+        # First, make sure that the user entered something
+        openid_url = req.args.get('openid_identifier')
+        if not openid_url:
+            return 'openidlogin.html', {
+                'action': req.href.openidverify(),
+                'message': 'Enter an OpenID Identifier to verify.',
+                'css_class': 'error'
+            }, None
+
+        immediate = 'immediate' in req.args
+        use_sreg = 'use_sreg' in req.args
+
+        oidconsumer = self._get_consumer(req)
+        try:
+            print '1'+'*'*80
+            print openid_url.encode('utf-8')
+            request = oidconsumer.begin(openid_url.encode('utf-8'))
+        except consumer.DiscoveryFailure, exc:
+            fetch_error_string = 'Error in discovery: %s' % (
+                cgi.escape(str(exc[0])))
+            return 'openidlogin.html', {
+                'action': req.href.openidverify(),
+                'message': fetch_error_string,
+                'css_class': 'error'
+                }, None
+        else:
+            print '*'*80
+            if request is None:
+                msg = 'No OpenID services found for <code>%s</code>' % (
+                    cgi.escape(openid_url),)
+                return 'openidlogin.html', {
+                   'action': req.href.openidverify(),
+                   'message': msg,
+                   'css_class': 'error'
+                   }, None
+            else:
+                # Then, ask the library to begin the authorization.
+                # Here we find out the identity server that will verify the
+                # user's identity, and get a token that allows us to
+                # communicate securely with the identity server.
+                if use_sreg:
+                    self._request_registration_data(request)
+
+                trust_root = req.href.openidlogin() # FIXME: let think about this one
+                return_to = req.href.openidprocess()
+                if request.shouldSendRedirect():
+                    redirect_url = request.redirectURL(
+                        trust_root, return_to, immediate=immediate)
+                    req.send_response(302)
+                    req.send_header('Location', redirect_url)
+                    req.end_headers()
+                else:
+                    form_html = request.formMarkup(
+                        trust_root, return_to,
+                        form_tag_attrs={'id':'openid_message'},
+                        immediate=immediate)
+
+                    return 'autosubmitform.html', {
+                        'id': 'openid_message',
+                        'form': form_html
+                       }, None
+
+    def _do_process(self, req):
+        """Handle the redirect from the OpenID server.
+        """
+        oidconsumer = self._get_consumer(req)
+
+        # Ask the library to check the response that the server sent
+        # us.  Status is a code indicating the response type. info is
+        # either None or a string containing more information about
+        # the return type.
+        info = oidconsumer.complete(req.args)
+
+        sreg_resp = None
+        css_class = 'error'
+        if info.status == consumer.FAILURE and info.identity_url:
+            # In the case of failure, if info is non-None, it is the
+            # URL that we were verifying. We include it in the error
+            # message to help the user figure out what happened.
+            fmt = "Verification of %s failed: %s"
+            message = fmt % (cgi.escape(info.identity_url),
+                             info.message)
+        elif info.status == consumer.SUCCESS:
+            # Success means that the transaction completed without
+            # error. If info is None, it means that the user cancelled
+            # the verification.
+            css_class = 'alert'
+
+            # This is a successful verification attempt. If this
+            # was a real application, we would do our login,
+            # comment posting, etc. here.
+            fmt = "You have successfully verified %s as your identity."
+            message = fmt % (cgi.escape(info.identity_url),)
+            sreg_resp = sreg.SRegResponse.fromSuccessResponse(info)
+            if info.endpoint.canonicalID:
+                # You should authorize i-name users by their canonicalID,
+                # rather than their more human-friendly identifiers.  That
+                # way their account with you is not compromised if their
+                # i-name registration expires and is bought by someone else.
+                message += ("  This is an i-name, and its persistent ID is %s"
+                            % (cgi.escape(info.endpoint.canonicalID),))
+        elif info.status == consumer.CANCEL:
+            # cancelled
+            message = 'Verification cancelled'
+        elif info.status == consumer.SETUP_NEEDED:
+            if info.setup_url:
+                message = '<a href=%s>Setup needed</a>' % (
+                    quoteattr(info.setup_url),)
+            else:
+                # This means auth didn't succeed, but you're welcome to try
+                # non-immediate mode.
+                message = 'Setup needed'
+        else:
+            # Either we don't understand the code or there is no
+            # openid_url included with the error. Give a generic
+            # failure message. The library should supply debug
+            # information in a log.
+            message = 'Verification failed.'
+
+        return 'openidlogin.html', {
+            'action': req.href.openidverify(),
+            'message': message,
+            'css_class': css_class
+            }, None
+
+   # ITemplateProvider methods
 
     def get_htdocs_dirs(self):
         return []
 
     def get_templates_dirs(self):
-        return [pkg_resources.resource_filename('helloworld', 'templates')]
+        return [pkg_resources.resource_filename('authopenid', 'templates')]
         #return [resource_filename(__name__, 'templates')]
 
 
@@ -118,58 +273,6 @@ class AuthOpenIdPlugin(Component):
 #
 #        assert req.authname in ('anonymous', remote_user), \
 #               'Already logged in as %s.' % req.authname
-#
-#        openid_url = self.query.get('openid_identifier')
-#        if not openid_url:
-#            self.render('Enter an OpenID Identifier to verify.',
-#                        css_class='error', form_contents=openid_url)
-#            return
-#
-#        immediate = 'immediate' in self.query
-#        use_sreg = 'use_sreg' in self.query
-#
-#        oidconsumer = self.getConsumer()
-#        try:
-#            request = oidconsumer.begin(openid_url)
-#        except consumer.DiscoveryFailure, exc:
-#            fetch_error_string = 'Error in discovery: %s' % (
-#                cgi.escape(str(exc[0])))
-#            self.render(fetch_error_string,
-#                        css_class='error',
-#                        form_contents=openid_url)
-#        else:
-#            if request is None:
-#                msg = 'No OpenID services found for <code>%s</code>' % (
-#                    cgi.escape(openid_url),)
-#                self.render(msg, css_class='error', form_contents=openid_url)
-#            else:
-#                # Then, ask the library to begin the authorization.
-#                # Here we find out the identity server that will verify the
-#                # user's identity, and get a token that allows us to
-#                # communicate securely with the identity server.
-#                if use_sreg:
-#                    self.requestRegistrationData(request)
-#
-#                trust_root = self.server.base_url
-#                return_to = self.buildURL('process')
-#                if request.shouldSendRedirect():
-#                    redirect_url = request.redirectURL(
-#                        trust_root, return_to, immediate=immediate)
-#                    self.send_response(302)
-#                    self.send_header('Location', redirect_url)
-#                    self.writeUserHeader()
-#                    self.end_headers()
-#                else:
-#                    form_html = request.formMarkup(
-#                        trust_root, return_to,
-#                        form_tag_attrs={'id':'openid_message'},
-#                        immediate=immediate)
-#
-#                    self.autoSubmit(form_html, 'openid_message')
-#
-#
-#
-#
 #
 #        cookie = hex_entropy()
 #        db = self.env.get_db_cnx()
@@ -231,11 +334,10 @@ class AuthOpenIdPlugin(Component):
 #
 #        return row[0]
 #
-#    def _redirect_back(self, req):
-#        """Redirect the user back to the URL she came from."""
-#        referer = req.get_header('Referer')
-#        if referer and not referer.startswith(req.base_url):
-#            # only redirect to referer if it is from the same site
-#            referer = None
-#        req.redirect(referer or req.abs_href())
-#
+    def _redirect_back(self, req):
+        """Redirect the user back to the URL she came from."""
+        referer = req.get_header('Referer')
+        if referer and not referer.startswith(req.base_url):
+            # only redirect to referer if it is from the same site
+            referer = None
+        req.redirect(referer or req.abs_href())
