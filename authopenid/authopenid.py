@@ -1,6 +1,18 @@
-# [components]
-# trac.web.auth.* = disabled
-# openidauth.* = enabled
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2007 Dalius Dobravolskas <dalius@sandbox.lt>
+# All rights reserved.
+#
+# This software is licensed using the same licence as Trac:
+# http://trac.edgewall.org/wiki/TracLicense.
+#
+# Author: Dalius Dobravolskas <dalius@sandbox.lt>
+#
+# Most probably you will want to add following lines to your configuration file:
+#
+#   [components]
+#   trac.web.auth.* = disabled
+#   authopenid.* = enabled
 
 import pkg_resources
 import cgi
@@ -171,7 +183,7 @@ class AuthOpenIdPlugin(Component):
 
         oidconsumer, session = self._get_consumer(req)
         try:
-            request = oidconsumer.begin(openid_url.encode('utf-8'))
+            request = oidconsumer.begin(openid_url)
         except consumer.DiscoveryFailure, exc:
             fetch_error_string = 'Error in discovery: %s' % (
                 cgi.escape(str(exc[0])))
@@ -196,14 +208,12 @@ class AuthOpenIdPlugin(Component):
                 # user's identity, and get a token that allows us to
                 # communicate securely with the identity server.
 
-                trust_root = self._get_trust_root(req)
+                trust_root = self._get_trust_root(req) + '/'
                 return_to = self._get_trust_root(req) + req.href.openidprocess()
                 if request.shouldSendRedirect():
                     redirect_url = request.redirectURL(
                         trust_root, return_to, immediate=immediate)
-                    req.send_response(302)
-                    req.send_header('Location', redirect_url)
-                    req.end_headers()
+                    req.redirect(redirect_url)
                 else:
                     form_html = request.formMarkup(
                         trust_root, return_to,
