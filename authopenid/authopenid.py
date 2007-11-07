@@ -33,6 +33,7 @@ from openid.store.sqlstore import MySQLStore, PostgreSQLStore, SQLiteStore
 from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
+from openid import sreg
 
 class AuthOpenIdPlugin(Component):
 
@@ -208,6 +209,9 @@ class AuthOpenIdPlugin(Component):
                 # user's identity, and get a token that allows us to
                 # communicate securely with the identity server.
 
+                sreg_request = sreg.SRegRequest(optional=['nickname', 'email'])
+                request.addExtension(sreg_request)
+
                 trust_root = self._get_trust_root(req) + '/'
                 return_to = self._get_trust_root(req) + req.href.openidprocess()
                 if request.shouldSendRedirect():
@@ -276,6 +280,15 @@ class AuthOpenIdPlugin(Component):
             req.authname = info.identity_url
             req.outcookie['trac_auth'] = cookie
             req.outcookie['trac_auth']['path'] = req.href()
+            req.outcookie['trac_auth']['expires'] = 60*60*24
+
+            reg_info = sreg.SRegResponse.fromSuccessResponse(info).getExtensionArgs()
+
+            if reg_info and reg_info.has_key('nickname') and len(reg_info['nickname']) > 0:
+                req.session['name'] = reg_info['nickname']
+            if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
+                req.session['email'] = reg_info['email']
+
         elif info.status == consumer.CANCEL:
             # cancelled
             message = 'Verification cancelled'
@@ -325,7 +338,7 @@ class AuthOpenIdPlugin(Component):
         db = self.env.get_db_cnx()
         cursor = db.cursor()
         cursor.execute("DELETE FROM auth_cookie WHERE name=%s OR time < %s",
-                       (req.authname, int(time.time()) - 86400 * 10))
+                       (req.authname, int(time.time()) - 60*60*24))
         db.commit()
         self._expire_cookie(req)
         custom_redirect = self.config['metanav'].get('logout.redirect')
