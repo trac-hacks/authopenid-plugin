@@ -58,7 +58,7 @@ class AuthOpenIdPlugin(Component):
         scheme, rest = self.connection_uri.split(':', 1)
         if scheme == 'mysql':
             return MySQLStore(db)
-        elif scheme == 'postgresql':
+        elif scheme == 'postgres':
             return PostgreSQLStore(db)
         elif scheme == 'sqlite':
             return SQLiteStore(db)
