@@ -35,6 +35,9 @@ from openid.store.memstore import MemoryStore
 from openid.consumer import consumer
 from openid import sreg
 
+import socket
+import struct
+
 class AuthOpenIdPlugin(Component):
 
     openid_session_key = 'openid_session_data'
@@ -49,6 +52,13 @@ class AuthOpenIdPlugin(Component):
     check_ip = BoolOption('trac', 'check_auth_ip', 'true',
          """Whether the IP address of the user should be checked for
          authentication (''since 0.9'').""")
+    check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
+            """What mask should be applied to user address.""")
+
+    def _get_masked_address(self, address):
+        mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
+        address = struct.unpack('>L', socket.inet_aton(address))[0]
+        return socket.inet_ntoa(struct.pack('>L', address & mask))
 
     def __init__(self):
         db = self.env.get_db_cnx()
@@ -274,7 +284,7 @@ class AuthOpenIdPlugin(Component):
             cursor = db.cursor()
             cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
                            "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
-                           req.remote_addr, int(time.time())))
+                           self._get_masked_address(req.remote_addr), int(time.time())))
             db.commit()
 
             req.authname = info.identity_url
@@ -362,7 +372,7 @@ class AuthOpenIdPlugin(Component):
         if self.check_ip:
             cursor.execute("SELECT name FROM auth_cookie "
                            "WHERE cookie=%s AND ipnr=%s",
-                           (cookie.value, req.remote_addr))
+                           (cookie.value, self._get_masked_address(req.remote_addr)))
         else:
             cursor.execute("SELECT name FROM auth_cookie WHERE cookie=%s",
                            (cookie.value,))
