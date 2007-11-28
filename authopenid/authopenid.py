@@ -238,7 +238,7 @@ class AuthOpenIdPlugin(Component):
         # us.  Status is a code indicating the response type. info is
         # either None or a string containing more information about
         # the return type.
-        info = oidconsumer.complete(req.args)
+        info = oidconsumer.complete(req.args,req.args['openid.return_to'])
 
         css_class = 'error'
         if info.status == consumer.FAILURE and info.identity_url:
