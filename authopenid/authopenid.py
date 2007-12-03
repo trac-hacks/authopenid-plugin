@@ -30,10 +30,11 @@ from genshi.builder import tag
 
 from trac.util import hex_entropy
 from openid.store.sqlstore import MySQLStore, PostgreSQLStore, SQLiteStore
+from tracstore import TracSQLiteStore
 from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
-from openid import sreg
+from openid.extensions import sreg
 
 import socket
 import struct
@@ -71,7 +72,7 @@ class AuthOpenIdPlugin(Component):
         elif scheme == 'postgres':
             return PostgreSQLStore(db)
         elif scheme == 'sqlite':
-            return SQLiteStore(db)
+            return TracSQLiteStore(db)
         else:
             return MemoryStore()
 
@@ -173,7 +174,10 @@ class AuthOpenIdPlugin(Component):
         s = self._get_session(req)
         if 'id' not in s:
             s['id'] = req.session.sid
-        return consumer.Consumer(s, self.store), s
+        db = self.env.get_db_cnx()
+        store = self._getStore(db)
+                
+        return consumer.Consumer(s, store), s
 
     def _do_verify(self, req):
         """Process the form submission, initating OpenID verification.
