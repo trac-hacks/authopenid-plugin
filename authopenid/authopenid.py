@@ -345,7 +345,7 @@ class AuthOpenIdPlugin(Component):
         """
         if req.authname == 'anonymous':
             # Not logged in
-            return
+            req.redirect(req.abs_href())
 
         # While deleting this cookie we also take the opportunity to delete
         # cookies older than 10 days
@@ -360,7 +360,7 @@ class AuthOpenIdPlugin(Component):
             if custom_redirect.startswith('/'):
                 custom_redirect = req.href(custom_redirect)
             req.redirect(custom_redirect)
-        req.redirect(self._get_trust_root(req))
+        req.redirect(req.abs_href())
 
     def _expire_cookie(self, req):
         """Instruct the user agent to drop the auth cookie by setting the
