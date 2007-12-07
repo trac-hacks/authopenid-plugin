@@ -122,7 +122,7 @@ class AuthOpenIdPlugin(Component):
 
     def get_navigation_items(self, req):
         if req.authname and req.authname != 'anonymous':
-            yield ('metanav', 'openidlogin', 'logged in as %s' % req.authname)
+            yield ('metanav', 'openidlogin', 'logged in as %s' % (req.session.get('name') or req.authname))
             yield ('metanav', 'openidlogout',
                    tag.a('Logout', href=req.href.openidlogout()))
         else:
