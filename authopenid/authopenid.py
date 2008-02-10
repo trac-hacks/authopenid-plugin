@@ -34,7 +34,7 @@ from tracstore import TracSQLiteStore
 from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
-from openid.extensions import sreg
+from openid.extensions import sreg, pape
 
 import socket
 import struct
@@ -61,6 +61,9 @@ class AuthOpenIdPlugin(Component):
 
     sreg_required = BoolOption('openid', 'sreg_required', 'false',
             """Whether SREG data should be required or optional.""")
+
+    pape_method = Option('openid', 'pape_method', None, 
+            """Default PAPE method to request from OpenID provider.""")
 
     def _get_masked_address(self, address):
         mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -238,6 +241,18 @@ class AuthOpenIdPlugin(Component):
                 # Here we find out the identity server that will verify the
                 # user's identity, and get a token that allows us to
                 # communicate securely with the identity server.
+
+                requested_policies = []
+                if self.pape_method:
+                   requested_policies.append(self.pape_method)
+
+                pape_method = req.args.get('pape_method')
+                if pape_method:
+                    requested_policies.append(pape_method)
+
+                if requested_policies:
+                    pape_request = pape.Request(requested_policies)
+                    request.addExtension(pape_request)
 
                 # Let the sreg policy be configurable 
                 sreg_opt = []
