@@ -62,8 +62,11 @@ class AuthOpenIdPlugin(Component):
     sreg_required = BoolOption('openid', 'sreg_required', 'false',
             """Whether SREG data should be required or optional.""")
 
-    pape_method = Option('openid', 'pape_method', None, 
+    pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
+
+    whatis_link = Option('openid', 'whatis', 'http://openid.net/what/',
+            """What is OpenId link.""")
 
     def _get_masked_address(self, address):
         mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -167,6 +170,7 @@ class AuthOpenIdPlugin(Component):
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
             'message': 'Enter your OpenID URL',
+            'whatis': self.whatis_link,
             'css_class': 'error'
             }, None
 
@@ -210,6 +214,7 @@ class AuthOpenIdPlugin(Component):
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
                 'message': 'Enter an OpenID Identifier to verify.',
+                'whatis': self.whatis_link,
                 'css_class': 'error'
                 }, None
 
@@ -224,6 +229,7 @@ class AuthOpenIdPlugin(Component):
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
                 'message': fetch_error_string,
+                'whatis': self.whatis_link,
                 'css_class': 'error'
                 }, None
         else:
@@ -233,6 +239,7 @@ class AuthOpenIdPlugin(Component):
                 return 'openidlogin.html', {
                    'action': req.href.openidverify(),
                    'message': msg,
+                    'whatis': self.whatis_link,
                    'css_class': 'error'
                    }, None
             else:
@@ -342,7 +349,8 @@ class AuthOpenIdPlugin(Component):
             if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
                 req.session['email'] = reg_info['email']
 
-            req.redirect(req.abs_href())
+            self._commit_session(session, req) 
+            req.redirect(req.session.get('oid.referer') or req.abs_href())
         elif info.status == consumer.CANCEL:
             # cancelled
             message = 'Verification cancelled'
@@ -367,6 +375,7 @@ class AuthOpenIdPlugin(Component):
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
             'message': message,
+            'whatis': self.whatis_link,
             'css_class': css_class
             }, None
 
