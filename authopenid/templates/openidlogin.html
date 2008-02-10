@@ -14,11 +14,10 @@
   <body>
     <div py:attrs="{'class': css_class}" py:content="message"/>
     <div id="verify-form">
-      <form method="get" accept-charset="UTF-8" action="${action}">
+      <form method="post" accept-charset="UTF-8" action="${action}">
         Identifier:
         <input type="text" name="openid_identifier" class="openid-identifier" value="" />
         <input type="submit" value="Verify" /><br />
-        <input type="checkbox" name="immediate" id="immediate" /><label for="immediate">Use immediate mode</label>
       </form>
     </div>
   </body>

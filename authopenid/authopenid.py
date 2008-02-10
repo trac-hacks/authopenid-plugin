@@ -55,6 +55,9 @@ class AuthOpenIdPlugin(Component):
          authentication (''since 0.9'').""")
     check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
             """What mask should be applied to user address.""")
+    
+    default_openid = Option('trac', 'default_openid', None,
+            """Default OpenID provider for directed identity.""")
 
     def _get_masked_address(self, address):
         mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -144,6 +147,16 @@ class AuthOpenIdPlugin(Component):
             return self._do_logout(req)
 
     def _do_login(self, req):
+        # check the referer
+        referer = req.get_header('Referer')
+        if referer and not (referer == req.base_url or referer.startswith(req.base_url.rstrip('/')+'/')):
+            # only redirect to referer if it is from the same site
+            referer = None
+        if referer:
+           req.session['oid.referer'] = referer
+        if self.default_openid:
+           req.args['openid_identifier'] = self.default_openid
+           return self._do_verify(req)
         add_stylesheet(req, 'authopenid/css/openid.css')
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
