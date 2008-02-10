@@ -21,7 +21,7 @@ import re
 import time
 
 from trac.core import *
-from trac.config import Option, BoolOption
+from trac.config import Option, BoolOption, IntOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
@@ -55,6 +55,9 @@ class AuthOpenIdPlugin(Component):
          authentication (''since 0.9'').""")
     check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
             """What mask should be applied to user address.""")
+
+    trac_auth_expires = IntOption('trac', 'expires', 60*60*24,
+            """Specify how fast authentication expires.""")
 
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
@@ -340,7 +343,7 @@ class AuthOpenIdPlugin(Component):
             req.authname = info.identity_url
             req.outcookie['trac_auth'] = cookie
             req.outcookie['trac_auth']['path'] = req.href()
-            req.outcookie['trac_auth']['expires'] = 60*60*24
+            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
             reg_info = sreg.SRegResponse.fromSuccessResponse(info).getExtensionArgs()
 
