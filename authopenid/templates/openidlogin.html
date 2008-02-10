@@ -9,12 +9,17 @@
 
   <head>
     <title>OpenID Login</title>
+    <script type="text/javascript">
+        $(document).ready(function(){
+          document.login.openid_identifier.focus();
+          });
+    </script>
   </head>
 
   <body>
     <div py:attrs="{'class': css_class}" py:content="message"/>
     <div id="verify-form">
-      <form method="post" accept-charset="UTF-8" action="${action}">
+      <form name="login" method="post" accept-charset="UTF-8" action="${action}">
         OpenID URL:
         <input type="text" name="openid_identifier" class="openid-identifier" value="" />
         <input type="submit" value="Verify" /><br />
