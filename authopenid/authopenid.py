@@ -342,6 +342,7 @@ class AuthOpenIdPlugin(Component):
             if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
                 req.session['email'] = reg_info['email']
 
+            req.redirect(req.abs_href())
         elif info.status == consumer.CANCEL:
             # cancelled
             message = 'Verification cancelled'
