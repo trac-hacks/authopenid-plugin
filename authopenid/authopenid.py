@@ -55,9 +55,12 @@ class AuthOpenIdPlugin(Component):
          authentication (''since 0.9'').""")
     check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
             """What mask should be applied to user address.""")
-    
-    default_openid = Option('trac', 'default_openid', None,
+
+    default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
+
+    sreg_required = BoolOption('openid', 'sreg_required', 'false',
+            """Whether SREG data should be required or optional.""")
 
     def _get_masked_address(self, address):
         mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -236,7 +239,15 @@ class AuthOpenIdPlugin(Component):
                 # user's identity, and get a token that allows us to
                 # communicate securely with the identity server.
 
-                sreg_request = sreg.SRegRequest(optional=['nickname', 'email'])
+                # Let the sreg policy be configurable 
+                sreg_opt = []
+                sreg_req = []
+                sreg_fields = ['fullname', 'email']
+                if self.sreg_required:
+                    sreg_req = sreg_fields
+                else:
+                    sreg_opt = sreg_fields
+                sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
                 trust_root = self._get_trust_root(req) + '/'
@@ -311,8 +322,8 @@ class AuthOpenIdPlugin(Component):
 
             reg_info = sreg.SRegResponse.fromSuccessResponse(info).getExtensionArgs()
 
-            if reg_info and reg_info.has_key('nickname') and len(reg_info['nickname']) > 0:
-                req.session['name'] = reg_info['nickname']
+            if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
+                req.session['name'] = reg_info['fullname']
             if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
                 req.session['email'] = reg_info['email']
 
