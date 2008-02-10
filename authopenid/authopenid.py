@@ -71,6 +71,9 @@ class AuthOpenIdPlugin(Component):
     whatis_link = Option('openid', 'whatis', 'http://openid.net/what/',
             """What is OpenId link.""")
 
+    absolute_trust_root = BoolOption('openid', 'absolute_trust_root', 'true',
+            """Whether we should use absolute trust root or by project.""")
+
     def _get_masked_address(self, address):
         mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
         address = struct.unpack('>L', socket.inet_aton(address))[0]
@@ -275,7 +278,11 @@ class AuthOpenIdPlugin(Component):
                 sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
-                trust_root = self._get_trust_root(req) + '/'
+                trust_root = self._get_trust_root(req)
+                if self.absolute_trust_root:
+                    trust_root += '/'
+                else:
+                    trust_root += req.href()
                 return_to = self._get_trust_root(req) + req.href.openidprocess()
                 if request.shouldSendRedirect():
                     redirect_url = request.redirectURL(
