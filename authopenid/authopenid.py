@@ -30,7 +30,6 @@ from genshi.builder import tag
 
 from trac.util import hex_entropy
 from openid.store.sqlstore import MySQLStore, PostgreSQLStore, SQLiteStore
-from tracstore import TracSQLiteStore
 from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
@@ -90,7 +89,7 @@ class AuthOpenIdPlugin(Component):
         elif scheme == 'postgres':
             return PostgreSQLStore(db)
         elif scheme == 'sqlite':
-            return TracSQLiteStore(db)
+            return SQLiteStore(db.cnx.cnx)
         else:
             return MemoryStore()
 
