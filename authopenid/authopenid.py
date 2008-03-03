@@ -198,13 +198,12 @@ class AuthOpenIdPlugin(Component):
     def _commit_session(self, session, req):
         req.session[self.openid_session_key] = str(cPickle.dumps(session))
 
-    def _get_consumer(self, req):
+    def _get_consumer(self, req, db):
         s = self._get_session(req)
         if 'id' not in s:
             s['id'] = req.session.sid
-        db = self.env.get_db_cnx()
         store = self._getStore(db)
-                
+
         return consumer.Consumer(s, store), s
 
     def _do_verify(self, req):
@@ -225,7 +224,8 @@ class AuthOpenIdPlugin(Component):
 
         immediate = 'immediate' in req.args
 
-        oidconsumer, session = self._get_consumer(req)
+        db = self.env.get_db_cnx()
+        oidconsumer, session = self._get_consumer(req, db)
         try:
             request = oidconsumer.begin(openid_url)
         except consumer.DiscoveryFailure, exc:
@@ -301,7 +301,8 @@ class AuthOpenIdPlugin(Component):
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
         """
-        oidconsumer, session = self._get_consumer(req)
+        db = self.env.get_db_cnx()
+        oidconsumer, session = self._get_consumer(req, db)
 
         # Ask the library to check the response that the server sent
         # us.  Status is a code indicating the response type. info is
