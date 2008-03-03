@@ -1,0 +1,8 @@
+syntax: glob
+*.pyc
+*.swp
+TracAuthOpenId.egg-info/PKG-INFO
+TracAuthOpenId.egg-info/SOURCES.txt
+TracAuthOpenId.egg-info/dependency_links.txt
+TracAuthOpenId.egg-info/entry_points.txt
+TracAuthOpenId.egg-info/top_level.txt
