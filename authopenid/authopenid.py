@@ -58,6 +58,9 @@ class AuthOpenIdPlugin(Component):
     trac_auth_expires = IntOption('trac', 'expires', 60*60*24,
             """Specify how fast authentication expires.""")
 
+    timeout = BoolOption('openid', 'timeout', False,
+            """Specify if expiration time should act as timeout.""")
+
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
 
@@ -450,5 +453,12 @@ class AuthOpenIdPlugin(Component):
             # tell the user agent to drop it as it is invalid
             self._expire_cookie(req)
             return None
+        elif self.timeout:
+            cursor.execute("UPDATE auth_cookie SET time=%s "
+                           "WHERE cookie=%s AND name=%s",
+                           (int(time.time()), cookie.value, row[0]))
+            req.outcookie['trac_auth'] = cookie.value
+            req.outcookie['trac_auth']['path'] = req.href()
+            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
         return row[0]
