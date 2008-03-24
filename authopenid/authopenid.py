@@ -61,6 +61,9 @@ class AuthOpenIdPlugin(Component):
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
 
+    strip_protocol = BoolOption('openid', 'strip_protocol', False,
+            """Instead of using username beginning with http:// or https:// you can strip the beginning.""")
+
     sreg_required = BoolOption('openid', 'sreg_required', 'false',
             """Whether SREG data should be required or optional.""")
 
@@ -330,6 +333,8 @@ class AuthOpenIdPlugin(Component):
             fmt = "You have successfully verified %s as your identity."
             message = fmt % (cgi.escape(info.identity_url),)
             remote_user = info.identity_url
+            if self.strip_protocol:
+                remote_user = remote_user[remote_user.find('://')+3:]
             if info.endpoint.canonicalID:
                 # You should authorize i-name users by their canonicalID,
                 # rather than their more human-friendly identifiers.  That
