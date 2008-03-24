@@ -412,11 +412,11 @@ class AuthOpenIdPlugin(Component):
             req.redirect(req.abs_href())
 
         # While deleting this cookie we also take the opportunity to delete
-        # cookies older than 10 days
+        # cookies older than trac_auth_expires
         db = self.env.get_db_cnx()
         cursor = db.cursor()
         cursor.execute("DELETE FROM auth_cookie WHERE name=%s OR time < %s",
-                       (req.authname, int(time.time()) - 60*60*24))
+                       (req.authname, int(time.time()) - trac_auth_expires))
         db.commit()
         self._expire_cookie(req)
         custom_redirect = self.config['metanav'].get('logout.redirect')
