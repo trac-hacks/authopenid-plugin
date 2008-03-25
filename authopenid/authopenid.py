@@ -35,8 +35,19 @@ from openid.store.memstore import MemoryStore
 from openid.consumer import consumer
 from openid.extensions import sreg, pape
 
+from openid import oidutil
+
 import socket
 import struct
+
+class OpenIdLogger:
+    """ Log all OpenID messages to debug. """
+
+    def __init__(self, env):
+        self.env = env
+
+    def __call__(self, message, level=0):
+        self.env.log.debug(message)
 
 class AuthOpenIdPlugin(Component):
 
@@ -87,6 +98,7 @@ class AuthOpenIdPlugin(Component):
     def __init__(self):
         db = self.env.get_db_cnx()
         self.store = self._getStore(db)
+        oidutil.log = OpenIdLogger(self.env)
 
     def _getStore(self, db):
         scheme, rest = self.connection_uri.split(':', 1)
@@ -233,6 +245,7 @@ class AuthOpenIdPlugin(Component):
         db = self.env.get_db_cnx()
         oidconsumer, session = self._get_consumer(req, db)
         try:
+            self.env.log.debug('beginning OpenID authentication.')
             request = oidconsumer.begin(openid_url)
         except consumer.DiscoveryFailure, exc:
             fetch_error_string = 'Error in discovery: %s' % (
@@ -292,6 +305,7 @@ class AuthOpenIdPlugin(Component):
                 if request.shouldSendRedirect():
                     redirect_url = request.redirectURL(
                         trust_root, return_to, immediate=immediate)
+                    self.env.log.debug('Redirecting to: %s' % redirect_url)
                     req.redirect(redirect_url)
                 else:
                     form_html = request.formMarkup(
@@ -419,7 +433,7 @@ class AuthOpenIdPlugin(Component):
         db = self.env.get_db_cnx()
         cursor = db.cursor()
         cursor.execute("DELETE FROM auth_cookie WHERE name=%s OR time < %s",
-                       (req.authname, int(time.time()) - trac_auth_expires))
+                       (req.authname, int(time.time()) - self.trac_auth_expires))
         db.commit()
         self._expire_cookie(req)
         custom_redirect = self.config['metanav'].get('logout.redirect')
