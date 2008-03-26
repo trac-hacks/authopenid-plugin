@@ -78,6 +78,9 @@ class AuthOpenIdPlugin(Component):
     strip_protocol = BoolOption('openid', 'strip_protocol', False,
             """Instead of using username beginning with http:// or https:// you can strip the beginning.""")
 
+    strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
+            """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
+
     sreg_required = BoolOption('openid', 'sreg_required', 'false',
             """Whether SREG data should be required or optional.""")
 
@@ -352,6 +355,8 @@ class AuthOpenIdPlugin(Component):
             remote_user = info.identity_url
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
+            if self.strip_trailing_slash and remote_user[-1] == '/':
+                remote_user = remote_user[:-1]
             if info.endpoint.canonicalID:
                 # You should authorize i-name users by their canonicalID,
                 # rather than their more human-friendly identifiers.  That
