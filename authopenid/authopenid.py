@@ -94,9 +94,11 @@ class AuthOpenIdPlugin(Component):
             """Whether we should use absolute trust root or by project.""")
 
     def _get_masked_address(self, address):
-        mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
-        address = struct.unpack('>L', socket.inet_aton(address))[0]
-        return socket.inet_ntoa(struct.pack('>L', address & mask))
+        if self.check_ip:
+            mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
+            address = struct.unpack('>L', socket.inet_aton(address))[0]
+            return socket.inet_ntoa(struct.pack('>L', address & mask))
+        return address
 
     def __init__(self):
         db = self.env.get_db_cnx()
