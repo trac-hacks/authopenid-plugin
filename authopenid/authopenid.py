@@ -215,9 +215,9 @@ class AuthOpenIdPlugin(Component):
         self.env.log.debug('_get_trust_root href: ' + href)
         self.env.log.debug('_get_trust_root abs_href: ' + abs_href)
         if href and abs_href.endswith(href):
-            base_url = req.abs_href()[:-len(href)]
+            base_url = abs_href[:-len(href)]
         else:
-            base_url = req.abs_href()
+            base_url = abs_href
 
         return base_url
 
