@@ -384,7 +384,11 @@ class AuthOpenIdPlugin(Component):
             req.outcookie['trac_auth']['path'] = req.href()
             req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
-            reg_info = sreg.SRegResponse.fromSuccessResponse(info).getExtensionArgs()
+            response = sreg.SRegResponse.fromSuccessResponse(info)
+            if response:
+                reg_info = response.getExtensionArgs()
+            else:
+                reg_info = None
 
             if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                 req.session['name'] = reg_info['fullname']
