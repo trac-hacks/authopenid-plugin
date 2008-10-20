@@ -95,6 +95,12 @@ class AuthOpenIdPlugin(Component):
     absolute_trust_root = BoolOption('openid', 'absolute_trust_root', 'true',
             """Whether we should use absolute trust root or by project.""")
 
+    white_list = Option('openid', 'white_list', '',
+            """Comma separated list of allowed OpenId addresses.""")
+
+    black_list = Option('openid', 'black_list', '',
+            """Comma separated list of denied OpenId addresses.""")
+
     def _get_masked_address(self, address):
         if self.check_ip:
             mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -102,10 +108,28 @@ class AuthOpenIdPlugin(Component):
             return socket.inet_ntoa(struct.pack('>L', address & mask))
         return address
 
+    def generate_re_list(self, list_in_string):
+        """ Generates list of compiled regular expressions from given comma-separated
+            list in string. """
+        generated_list = []
+        if list_in_string:
+            for item in list_in_string.split(','):
+                item = item.replace('.', '\\.')
+                item = item.replace('*', '.*')
+                generated_list.append(re.compile(item))
+                self.env.log.debug("Item compiled: %s" % item)
+
+        return generated_list
+
     def __init__(self):
         db = self.env.get_db_cnx()
         self.store = self._getStore(db)
         oidutil.log = OpenIdLogger(self.env)
+        self.env.log.debug("Compiling white-list")
+        self.re_white_list = self.generate_re_list(self.white_list)
+        self.env.log.debug("Compiling black-list")
+        self.re_black_list = self.generate_re_list(self.black_list)
+
 
     def _getStore(self, db):
         scheme, rest = self.connection_uri.split(':', 1)
@@ -374,32 +398,50 @@ class AuthOpenIdPlugin(Component):
                             % (cgi.escape(info.endpoint.canonicalID),))
                 remote_user = info.endpoint.canonicalID
 
-            cookie = hex_entropy()
-            db = self.env.get_db_cnx()
-            cursor = db.cursor()
-            cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
-                           "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
-                           self._get_masked_address(req.remote_addr), int(time.time())))
-            db.commit()
+            allowed = True
+            if self.re_white_list:
+                self.env.log.debug("Filtering REMOTE_USER '%s' through white-list." % remote_user)
+                allowed = False
+                for item in self.re_white_list:
+                    if not allowed and item.match(remote_user):
+                        allowed = True
+                        self.env.log.debug("User white-listed.")
+            if allowed and self.re_black_list:
+                self.env.log.debug("Filtering REMOTE_USER '%s' through black-list." % remote_user)
+                for item in self.re_black_list:
+                    if item.match(remote_user):
+                        allowed = False
+                        self.env.log.debug("User black-listed.")
 
-            req.authname = info.identity_url
-            req.outcookie['trac_auth'] = cookie
-            req.outcookie['trac_auth']['path'] = req.href()
-            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+            if allowed:
+                cookie = hex_entropy()
+                db = self.env.get_db_cnx()
+                cursor = db.cursor()
+                cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
+                               "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
+                               self._get_masked_address(req.remote_addr), int(time.time())))
+                db.commit()
 
-            response = sreg.SRegResponse.fromSuccessResponse(info)
-            if response:
-                reg_info = response.getExtensionArgs()
+                req.authname = info.identity_url
+                req.outcookie['trac_auth'] = cookie
+                req.outcookie['trac_auth']['path'] = req.href()
+                req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+
+                response = sreg.SRegResponse.fromSuccessResponse(info)
+                if response:
+                    reg_info = response.getExtensionArgs()
+                else:
+                    reg_info = None
+
+                if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
+                    req.session['name'] = reg_info['fullname']
+                if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
+                    req.session['email'] = reg_info['email']
+
+                self._commit_session(session, req) 
+                req.redirect(req.session.get('oid.referer') or req.abs_href())
             else:
-                reg_info = None
-
-            if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
-                req.session['name'] = reg_info['fullname']
-            if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
-                req.session['email'] = reg_info['email']
-
-            self._commit_session(session, req) 
-            req.redirect(req.session.get('oid.referer') or req.abs_href())
+                message = 'You are not allowed here.'
         elif info.status == consumer.CANCEL:
             # cancelled
             message = 'Verification cancelled'
