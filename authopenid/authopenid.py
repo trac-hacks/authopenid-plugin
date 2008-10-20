@@ -116,6 +116,7 @@ class AuthOpenIdPlugin(Component):
             for item in list_in_string.split(','):
                 item = item.replace('.', '\\.')
                 item = item.replace('*', '.*')
+                item = item.strip()
                 generated_list.append(re.compile(item))
                 self.env.log.debug("Item compiled: %s" % item)
 
