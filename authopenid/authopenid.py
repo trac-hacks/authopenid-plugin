@@ -39,6 +39,12 @@ from openid import oidutil
 
 import socket
 import struct
+import urllib
+
+try:
+    import simplejson # Necessary only for check_list option. Because of that it might be not installed by default
+except ImportError:
+    pass
 
 class OpenIdLogger:
     """ Log all OpenID messages to debug. """
@@ -100,6 +106,12 @@ class AuthOpenIdPlugin(Component):
 
     black_list = Option('openid', 'black_list', '',
             """Comma separated list of denied OpenId addresses.""")
+
+    check_list = Option('openid', 'check_list', None,
+            """JSON service for openid check.""")
+
+    check_list_key = Option('openid', 'check_list_key', 'check_list',
+            """Key for openid Service.""")
 
     def _get_masked_address(self, address):
         if self.check_ip:
@@ -413,6 +425,13 @@ class AuthOpenIdPlugin(Component):
                     if item.match(remote_user):
                         allowed = False
                         self.env.log.debug("User black-listed.")
+
+            if allowed and self.check_list:
+                url = self.check_list + '?' + urllib.urlencode({self.check_list_key: remote_user})
+                self.env.log.debug('OpenID check list URL: %s' % url)
+                result = simplejson.load(urllib.urlopen(url))
+                if not result[self.check_list_key]:
+                    allowed = False
 
             if allowed:
                 cookie = hex_entropy()
