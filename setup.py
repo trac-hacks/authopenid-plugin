@@ -14,7 +14,7 @@ setup(
         packages=['authopenid'],
         entry_points={'trac.plugins': '%s = authopenid' % PACKAGE},
         package_data={'authopenid': ['templates/*.html', 'htdocs/css/*.css']},
-        download_url='http://trac.sandbox.lt/auth/raw-attachment/wiki/AuthOpenIdPlugin/TracAuthOpenId-0.1.7dev.tar.gz',
+        download_url='http://trac.sandbox.lt/auth/raw-attachment/wiki/AuthOpenIdPluginFiles/TracAuthOpenId-0.1.7dev.tar.gz',
         install_requires = [
             "python-openid>=2.1.0"
         ],
