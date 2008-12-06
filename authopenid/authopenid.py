@@ -284,6 +284,7 @@ class AuthOpenIdPlugin(Component):
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
                 'message': 'Enter an OpenID Identifier to verify.',
+                'signup': self.signup_link,
                 'whatis': self.whatis_link,
                 'css_class': 'error'
                 }, None
@@ -301,6 +302,7 @@ class AuthOpenIdPlugin(Component):
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
                 'message': fetch_error_string,
+                'signup': self.signup_link,
                 'whatis': self.whatis_link,
                 'css_class': 'error'
                 }, None
@@ -311,7 +313,8 @@ class AuthOpenIdPlugin(Component):
                 return 'openidlogin.html', {
                    'action': req.href.openidverify(),
                    'message': msg,
-                    'whatis': self.whatis_link,
+                   'signup': self.signup_link,
+                   'whatis': self.whatis_link,
                    'css_class': 'error'
                    }, None
             else:
@@ -486,6 +489,7 @@ class AuthOpenIdPlugin(Component):
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
             'message': message,
+            'signup': self.signup_link,
             'whatis': self.whatis_link,
             'css_class': css_class
             }, None
