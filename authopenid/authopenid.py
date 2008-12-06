@@ -93,7 +93,8 @@ class AuthOpenIdPlugin(Component):
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
 
-    signup_link = Option('openid', 'signup', 'http://openid.net/get/', 'Signup link')
+    signup_link = Option('openid', 'signup', 'http://openid.net/get/',
+            """Signup link""")
 
     whatis_link = Option('openid', 'whatis', 'http://openid.net/what/',
             """What is OpenId link.""")
