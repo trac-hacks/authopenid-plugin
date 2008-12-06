@@ -7,7 +7,7 @@ setup(
         name=PACKAGE,
         version=VERSION,
         description='OpenID plugin for Trac',
-        license='MIT',
+        license='Trac license',
         author='Dalius Dobravolskas',
         author_email='dalius@sandbox.lt',
         url='http://trac.sandbox.lt/auth/wiki/AuthOpenIdPlugin',
