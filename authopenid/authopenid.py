@@ -33,7 +33,7 @@ from openid.store.sqlstore import MySQLStore, PostgreSQLStore, SQLiteStore
 from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
-from openid.extensions import sreg, pape
+from openid.extensions import sreg, pape, ax
 
 from openid import oidutil
 
@@ -113,6 +113,9 @@ class AuthOpenIdPlugin(Component):
 
     check_list_key = Option('openid', 'check_list_key', 'check_list',
             """Key for openid Service.""")
+
+    gmail_suppport = BoolOption('openid', 'gmail', True,
+            """Specifies if gmail openid login should be enabled.""")
 
     def _get_masked_address(self, address):
         if self.check_ip:
@@ -211,13 +214,15 @@ class AuthOpenIdPlugin(Component):
     # IRequestHandler methods
 
     def match_request(self, req):
-        return re.match('/(openidlogin|openidverify|openidprocess|openidlogout)\??.*', req.path_info)
+        return re.match('/(openidlogin|openidgmailverify|openidverify|openidprocess|openidlogout)\??.*', req.path_info)
 
     def process_request(self, req):
         if req.path_info.startswith('/openidlogin'):
             return self._do_login(req)
         elif req.path_info.startswith('/openidverify'):
             return self._do_verify(req)
+        elif req.path_info.startswith('/openidgmailverify'):
+            return self._do_gmail_verify(req)
         elif req.path_info.startswith('/openidprocess'):
             return self._do_process(req)
         elif req.path_info.startswith('/openidlogout'):
@@ -237,6 +242,7 @@ class AuthOpenIdPlugin(Component):
         add_stylesheet(req, 'authopenid/css/openid.css')
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
+            'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
             'message': 'Enter your OpenID URL',
             'signup': self.signup_link,
             'whatis': self.whatis_link,
@@ -284,6 +290,7 @@ class AuthOpenIdPlugin(Component):
         if not openid_url:
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
+                'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
                 'message': 'Enter an OpenID Identifier to verify.',
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
@@ -302,6 +309,7 @@ class AuthOpenIdPlugin(Component):
                 cgi.escape(str(exc[0])))
             return 'openidlogin.html', {
                 'action': req.href.openidverify(),
+                'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
                 'message': fetch_error_string,
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
@@ -313,6 +321,7 @@ class AuthOpenIdPlugin(Component):
                     cgi.escape(openid_url),)
                 return 'openidlogin.html', {
                    'action': req.href.openidverify(),
+                   'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
                    'message': msg,
                    'signup': self.signup_link,
                    'whatis': self.whatis_link,
@@ -348,6 +357,12 @@ class AuthOpenIdPlugin(Component):
                 sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
+                if self.gmail_suppport:
+                    ax_request = ax.FetchRequest()
+                    attr_info = ax.AttrInfo('http://schema.openid.net/contact/email', required=True)
+                    ax_request.add(attr_info)
+                    request.addExtension(ax_request)
+
                 trust_root = self._get_trust_root(req)
                 if self.absolute_trust_root:
                     trust_root += '/'
@@ -369,6 +384,20 @@ class AuthOpenIdPlugin(Component):
                         'id': 'openid_message',
                         'form': form_html
                        }, None
+
+    def _do_gmail_verify(self, req):
+        if self.gmail_suppport:
+           req.args['openid_identifier'] = 'https://www.google.com/accounts/o8/id'
+           return self._do_verify(req)
+        add_stylesheet(req, 'authopenid/css/openid.css')
+        return 'openidlogin.html', {
+            'action': req.href.openidverify(),
+            'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
+            'message': 'GMail OpenID is dissabled',
+            'signup': self.signup_link,
+            'whatis': self.whatis_link,
+            'css_class': 'error'
+            }, None
 
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
@@ -402,6 +431,16 @@ class AuthOpenIdPlugin(Component):
             fmt = "You have successfully verified %s as your identity."
             message = fmt % (cgi.escape(info.identity_url),)
             remote_user = info.identity_url
+
+            reg_info = None
+            if self.gmail_suppport and remote_user.startswith('https://www.google.com/accounts/o8/id?id='):
+                ax_response = ax.FetchResponse.fromSuccessResponse(info)
+                if ax_response:
+                    ax_data = ax_response.getExtensionArgs()
+                    email = ax_data.get('value.ext0.1', '')
+                    if email:
+                        reg_info = {'email': email, 'fullname': email.split('@', 1)[0].replace('.', ' ').title()}
+
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
             if self.strip_trailing_slash and remote_user[-1] == '/':
@@ -451,11 +490,10 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth']['path'] = req.href()
                 req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
-                response = sreg.SRegResponse.fromSuccessResponse(info)
-                if response:
-                    reg_info = response.getExtensionArgs()
-                else:
-                    reg_info = None
+                if not reg_info:
+                    response = sreg.SRegResponse.fromSuccessResponse(info)
+                    if response:
+                        reg_info = response.getExtensionArgs()
 
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = reg_info['fullname']
@@ -489,6 +527,7 @@ class AuthOpenIdPlugin(Component):
         add_stylesheet(req, 'authopenid/css/openid.css')
         return 'openidlogin.html', {
             'action': req.href.openidverify(),
+            'gmail_action': self.gmail_suppport and req.href.openidgmailverify() or '',
             'message': message,
             'signup': self.signup_link,
             'whatis': self.whatis_link,

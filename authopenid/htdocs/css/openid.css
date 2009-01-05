@@ -4,3 +4,12 @@ input.openid-identifier {
     padding-left:18px;
 }
 
+input.gmail_login {
+    background:#FFFFFF url(https://mail.google.com/favicon.ico) no-repeat scroll 0pt 50%;
+    padding-left:18px;
+}
+
+input.gmail_login:hover {
+    background:#CCCCCC url(https://mail.google.com/favicon.ico) no-repeat scroll 0pt 50%;
+    padding-left:18px;
+}

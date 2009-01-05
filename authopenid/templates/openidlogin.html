@@ -24,9 +24,16 @@
         <input type="text" name="openid_identifier" class="openid-identifier" value="" />
         <input type="submit" value="Verify" />
       </form>
+      <form py:if="gmail_action" name="gmail_login" method="post" accept-charset="UTF-8" action="${gmail_action}">
+        or GMail login:
+        <input type="submit" class="gmail_login" value="Login" />
+      </form>
     </div>
-    <a py:attrs="{'href': whatis}">What is OpenId?</a>
-    <a py:attrs="{'href': signup}">Sign-up</a>
+
+    <p>
+      <a py:attrs="{'href': whatis}">What is OpenId?</a>
+      <a py:attrs="{'href': signup}">Sign-up</a>
+    </p>
   </body>
 
 </html>
