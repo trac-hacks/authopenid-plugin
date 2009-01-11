@@ -151,7 +151,7 @@ class AuthOpenIdPlugin(Component):
     def _getStore(self, db):
         scheme, rest = self.connection_uri.split(':', 1)
         if scheme == 'mysql':
-            return MySQLStore(db)
+            return MySQLStore(db.cnx.cnx)
         elif scheme == 'postgres':
             return PostgreSQLStore(db)
         elif scheme == 'sqlite':
