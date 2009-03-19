@@ -10,25 +10,26 @@
   <head>
     <title>OpenID Login</title>
     <script type="text/javascript">
-        $(document).ready(function(){
-          document.login.openid_identifier.focus();
-          });
+        $(document).ready(function() {
+            openid.img_path = "${images}";
+            openid.init('openid_identifier');
+        });
     </script>
   </head>
 
   <body>
-    <div py:attrs="{'class': css_class}" py:content="message"/>
-    <div id="verify-form">
-      <form name="login" method="post" accept-charset="UTF-8" action="${action}">
-        OpenID URL:
-        <input type="text" name="openid_identifier" class="openid-identifier" value="" />
-        <input type="submit" value="Verify" />
-      </form>
-      <form py:if="gmail_action" name="gmail_login" method="post" accept-charset="UTF-8" action="${gmail_action}">
-        or GMail login:
-        <input type="submit" class="gmail_login" value="Login" />
-      </form>
-    </div>
+    <form id="openid_form" name="login" method="post" accept-charset="UTF-8" action="${action}">
+        <div py:attrs="{'class': css_class}" py:content="message"/>
+        <div id="openid_choice">
+            <p>Please click your account provider:</p>
+            <div id="openid_btns"></div>
+        </div>
+        <div id="openid_input_area">
+            OpenID URL:
+            <input type="text" id="openid_identifier" name="openid_identifier" class="openid_identifier" value="" />
+            <input type="submit" value="Sign-in" />
+        </div>
+    </form>
 
     <p>
       <a py:attrs="{'href': whatis}">What is OpenId?</a>
