@@ -11,6 +11,15 @@
     <title>OpenID Login</title>
     <script type="text/javascript">
         $(document).ready(function() {
+            <span py:if="custom_provider_name and custom_provider_url and custom_provider_image" py:strip="">
+            providers_small.${custom_provider_name} = {
+                name: '${custom_provider_name}',
+                label: '${custom_provider_label}',
+                url: '${custom_provider_url}',
+                image: '${custom_provider_image}'
+                }
+            providers.${custom_provider_name} = providers_small.${custom_provider_name}
+            </span>
             openid.img_path = "${images}";
             openid.init('openid_identifier');
         });

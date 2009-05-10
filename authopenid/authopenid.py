@@ -114,6 +114,18 @@ class AuthOpenIdPlugin(Component):
     check_list_key = Option('openid', 'check_list_key', 'check_list',
             """Key for openid Service.""")
 
+    custom_provider_name = Option('openid', 'custom_provider_name', None,
+            """ Custom OpenId provider name. """)
+
+    custom_provider_label = Option('openid', 'custom_provider_label', 'Enter your username',
+            """ Custom OpenId provider label. """)
+
+    custom_provider_url = Option('openid', 'custom_provider_url', '',
+            """ Custom OpenId provider URL. E.g.: http://claimid.com/{username} """)
+
+    custom_provider_image = Option('openid', 'custom_provider_image', '',
+            """ Custom OpenId provider image. """)
+
     def _get_masked_address(self, address):
         if self.check_ip:
             mask = struct.unpack('>L', socket.inet_aton(self.check_ip_mask))[0]
@@ -242,7 +254,11 @@ class AuthOpenIdPlugin(Component):
             'message': 'Login using OpenID.',
             'signup': self.signup_link,
             'whatis': self.whatis_link,
-            'css_class': 'error'
+            'css_class': 'error',
+            'custom_provider_name': self.custom_provider_name,
+            'custom_provider_label': self.custom_provider_label,
+            'custom_provider_url': self.custom_provider_url,
+            'custom_provider_image': self.custom_provider_image,
             }, None
 
     def _get_session(self, req):
@@ -291,7 +307,11 @@ class AuthOpenIdPlugin(Component):
                 'message': 'Enter an OpenID Identifier to verify.',
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
-                'css_class': 'error'
+                'css_class': 'error',
+                'custom_provider_name': self.custom_provider_name,
+                'custom_provider_label': self.custom_provider_label,
+                'custom_provider_url': self.custom_provider_url,
+                'custom_provider_image': self.custom_provider_image,
                 }, None
 
         immediate = 'immediate' in req.args
@@ -310,7 +330,11 @@ class AuthOpenIdPlugin(Component):
                 'message': fetch_error_string,
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
-                'css_class': 'error'
+                'css_class': 'error',
+                'custom_provider_name': self.custom_provider_name,
+                'custom_provider_label': self.custom_provider_label,
+                'custom_provider_url': self.custom_provider_url,
+                'custom_provider_image': self.custom_provider_image,
                 }, None
         else:
             if request is None:
@@ -322,7 +346,11 @@ class AuthOpenIdPlugin(Component):
                    'message': msg,
                    'signup': self.signup_link,
                    'whatis': self.whatis_link,
-                   'css_class': 'error'
+                   'css_class': 'error',
+                    'custom_provider_name': self.custom_provider_name,
+                    'custom_provider_label': self.custom_provider_label,
+                    'custom_provider_url': self.custom_provider_url,
+                    'custom_provider_image': self.custom_provider_image,
                    }, None
             else:
                 self._commit_session(session, req)
@@ -514,7 +542,11 @@ class AuthOpenIdPlugin(Component):
             'message': message,
             'signup': self.signup_link,
             'whatis': self.whatis_link,
-            'css_class': css_class
+            'css_class': css_class,
+            'custom_provider_name': self.custom_provider_name,
+            'custom_provider_label': self.custom_provider_label,
+            'custom_provider_url': self.custom_provider_url,
+            'custom_provider_image': self.custom_provider_image,
             }, None
 
    # ITemplateProvider methods
