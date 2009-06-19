@@ -14,7 +14,8 @@ setup(
         packages=['authopenid'],
         entry_points={'trac.plugins': '%s = authopenid' % PACKAGE},
         include_package_data = True,
-        package_data={'authopenid': ['templates/*.html', 'htdocs/css/*.css']},
+        package_data={'authopenid': ['templates/*.html', 'htdocs/css/*.css',
+            'htdocs/images/*', 'htdocs/js/*']},
         install_requires = [
             "python-openid>=2.1.0"
         ],
