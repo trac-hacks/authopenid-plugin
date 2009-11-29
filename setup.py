@@ -1,7 +1,7 @@
 from setuptools import setup
 
 PACKAGE = 'TracAuthOpenId'
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 
 setup(
         name=PACKAGE,
@@ -10,7 +10,7 @@ setup(
         license='Trac license',
         author='Dalius Dobravolskas',
         author_email='dalius@sandbox.lt',
-        url='http://trac.sandbox.lt/auth/wiki/AuthOpenIdPlugin',
+        url='ssh://hg@bitbucket.org/Dalius/authopenid-plugin/'
         packages=['authopenid'],
         entry_points={'trac.plugins': '%s = authopenid' % PACKAGE},
         include_package_data = True,
