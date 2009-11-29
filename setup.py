@@ -10,7 +10,7 @@ setup(
         license='Trac license',
         author='Dalius Dobravolskas',
         author_email='dalius@sandbox.lt',
-        url='ssh://hg@bitbucket.org/Dalius/authopenid-plugin/'
+        url='http://bitbucket.org/Dalius/authopenid-plugin/overview/',
         packages=['authopenid'],
         entry_points={'trac.plugins': '%s = authopenid' % PACKAGE},
         include_package_data = True,
