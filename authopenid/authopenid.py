@@ -114,6 +114,9 @@ class AuthOpenIdPlugin(Component):
     check_list_key = Option('openid', 'check_list_key', 'check_list',
             """Key for openid Service.""")
 
+    check_list_username = Option('openid', 'check_list_username', None,
+            """Username for openid Service.""")
+
     custom_provider_name = Option('openid', 'custom_provider_name', None,
             """ Custom OpenId provider name. """)
 
@@ -485,6 +488,10 @@ class AuthOpenIdPlugin(Component):
                 result = simplejson.load(urllib.urlopen(url))
                 if not result[self.check_list_key]:
                     allowed = False
+                elif self.check_list_username:
+                    new_user = result[self.check_list_username]
+                    if new_user:
+                        remote_user = new_user
 
             if allowed:
                 cookie = hex_entropy()
