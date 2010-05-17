@@ -90,6 +90,9 @@ class AuthOpenIdPlugin(Component):
     sreg_required = BoolOption('openid', 'sreg_required', 'false',
             """Whether SREG data should be required or optional.""")
 
+    combined_username = BoolOption('openid', 'combined_username', False,
+            """ Username will be written as username_in_remote_system<openid_url>. """)
+
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
 
@@ -495,12 +498,6 @@ class AuthOpenIdPlugin(Component):
 
             if allowed:
                 cookie = hex_entropy()
-                db = self.env.get_db_cnx()
-                cursor = db.cursor()
-                cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
-                               "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
-                               self._get_masked_address(req.remote_addr), int(time.time())))
-                db.commit()
 
                 req.authname = info.identity_url
                 req.outcookie['trac_auth'] = cookie
@@ -518,6 +515,17 @@ class AuthOpenIdPlugin(Component):
                     req.session['email'] = reg_info['email']
 
                 self._commit_session(session, req) 
+
+                if self.combined_username and req.session['name']:
+                    remote_user = '%s <%s>' % (req.session['name'], remote_user)
+
+                db = self.env.get_db_cnx()
+                cursor = db.cursor()
+                cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
+                               "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
+                               self._get_masked_address(req.remote_addr), int(time.time())))
+                db.commit()
+
                 req.redirect(req.session.get('oid.referer') or req.abs_href())
             else:
                 message = 'You are not allowed here.'
