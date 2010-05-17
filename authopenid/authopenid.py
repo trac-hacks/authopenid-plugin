@@ -457,6 +457,11 @@ class AuthOpenIdPlugin(Component):
                 if email:
                     reg_info = {'email': email, 'fullname': email.split('@', 1)[0].replace('.', ' ').title()}
 
+            if not reg_info:
+                response = sreg.SRegResponse.fromSuccessResponse(info)
+                if response:
+                    reg_info = response.getExtensionArgs()
+
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
             if self.strip_trailing_slash and remote_user[-1] == '/':
@@ -486,7 +491,10 @@ class AuthOpenIdPlugin(Component):
                         self.env.log.debug("User black-listed.")
 
             if allowed and self.check_list:
-                url = self.check_list + '?' + urllib.urlencode({self.check_list_key: remote_user})
+                params = {self.check_list_key: remote_user}
+                if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
+                    params['email'] = reg_info['email']
+                url = self.check_list + '?' + urllib.urlencode(params)
                 self.env.log.debug('OpenID check list URL: %s' % url)
                 result = simplejson.load(urllib.urlopen(url))
                 if not result[self.check_list_key]:
@@ -503,11 +511,6 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth'] = cookie
                 req.outcookie['trac_auth']['path'] = req.href()
                 req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
-
-                if not reg_info:
-                    response = sreg.SRegResponse.fromSuccessResponse(info)
-                    if response:
-                        reg_info = response.getExtensionArgs()
 
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = reg_info['fullname']
