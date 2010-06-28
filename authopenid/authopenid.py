@@ -276,7 +276,7 @@ class AuthOpenIdPlugin(Component):
 
     def _get_trust_root(self, req):
         href = req.href()
-        abs_href = req.abs_href()
+        abs_href = self.env.abs_href()
         self.env.log.debug('_get_trust_root href: ' + href)
         self.env.log.debug('_get_trust_root abs_href: ' + abs_href)
         if href and abs_href.endswith(href):
