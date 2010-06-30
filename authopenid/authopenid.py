@@ -529,7 +529,7 @@ class AuthOpenIdPlugin(Component):
                                self._get_masked_address(req.remote_addr), int(time.time())))
                 db.commit()
 
-                req.redirect(req.session.get('oid.referer') or req.abs_href())
+                req.redirect(req.session.get('oid.referer') or self.env.abs_href())
             else:
                 message = 'You are not allowed here.'
         elif info.status == consumer.CANCEL:
@@ -582,7 +582,7 @@ class AuthOpenIdPlugin(Component):
         """
         if req.authname == 'anonymous':
             # Not logged in
-            req.redirect(req.abs_href())
+            req.redirect(self.env.abs_href())
 
         # While deleting this cookie we also take the opportunity to delete
         # cookies older than trac_auth_expires
@@ -597,7 +597,7 @@ class AuthOpenIdPlugin(Component):
             if custom_redirect.startswith('/'):
                 custom_redirect = req.href(custom_redirect)
             req.redirect(custom_redirect)
-        req.redirect(req.abs_href())
+        req.redirect(self.env.abs_href())
 
     def _expire_cookie(self, req):
         """Instruct the user agent to drop the auth cookie by setting the
