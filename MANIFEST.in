@@ -1,0 +1,2 @@
+recursive-include authopenid/templates *.html
+recursive-include authopenid/htdocs *
