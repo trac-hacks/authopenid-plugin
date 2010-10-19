@@ -25,6 +25,10 @@ from trac.config import Option, BoolOption, IntOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
+try:
+    from acct_mgr.web_ui import LoginModule
+except ImportError:
+    from trac.web.auth import LoginModule
 
 from genshi.builder import tag
 
@@ -220,9 +224,10 @@ class AuthOpenIdPlugin(Component):
 
     def get_navigation_items(self, req):
         if req.authname and req.authname != 'anonymous':
-            yield ('metanav', 'openidlogin', 'logged in as %s' % (req.session.get('name') or req.authname))
-            yield ('metanav', 'openidlogout',
-                   tag.a('Logout', href=req.href.openidlogout()))
+            if not self.env.is_component_enabled(LoginModule):
+                yield ('metanav', 'openidlogin', 'logged in as %s' % (req.session.get('name') or req.authname))
+                yield ('metanav', 'openidlogout',
+                       tag.a('Logout', href=req.href.openidlogout()))
         else:
             yield ('metanav', 'openidlogin', tag.a(('OpenID Login'), href=req.href.openidlogin()))
 
