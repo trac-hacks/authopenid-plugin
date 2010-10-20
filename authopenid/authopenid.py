@@ -512,7 +512,6 @@ class AuthOpenIdPlugin(Component):
             if allowed:
                 cookie = hex_entropy()
 
-                req.authname = info.identity_url
                 req.outcookie['trac_auth'] = cookie
                 req.outcookie['trac_auth']['path'] = req.href()
                 req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
@@ -526,6 +525,8 @@ class AuthOpenIdPlugin(Component):
 
                 if self.combined_username and req.session['name']:
                     remote_user = '%s <%s>' % (req.session['name'], remote_user)
+
+                req.authname = remote_user
 
                 db = self.env.get_db_cnx()
                 cursor = db.cursor()
