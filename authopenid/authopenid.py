@@ -25,6 +25,7 @@ from trac.config import Option, BoolOption, IntOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
+from trac.web.session import DetachedSession
 try:
     from acct_mgr.web_ui import LoginModule
 except ImportError:
@@ -62,6 +63,7 @@ class OpenIdLogger:
 class AuthOpenIdPlugin(Component):
 
     openid_session_key = 'openid_session_data'
+    openid_session_identity_url_key = 'openid_session_identity_url_data'
 
     implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
 
@@ -95,7 +97,7 @@ class AuthOpenIdPlugin(Component):
             """Whether SREG data should be required or optional.""")
 
     combined_username = BoolOption('openid', 'combined_username', False,
-            """ Username will be written as username_in_remote_system<openid_url>. """)
+            """ Username will be written as username_in_remote_system <openid_url>. """)
 
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
@@ -516,6 +518,8 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth']['path'] = req.href()
                 req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
+                req.session[self.openid_session_identity_url_key] = info.identity_url
+
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = reg_info['fullname']
                 if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
@@ -525,6 +529,31 @@ class AuthOpenIdPlugin(Component):
 
                 if self.combined_username and req.session['name']:
                     remote_user = '%s <%s>' % (req.session['name'], remote_user)
+                else:
+                    if req.session.has_key('name'):
+                        remote_user = req.session['name']
+
+                    # Check if we generated a colliding remote_user and make the user unique
+                    collisions = 0
+                    cremote_user = remote_user
+                    while True:
+                        ds = DetachedSession(self.env, remote_user)
+                        if not ds.last_visit:
+                            # New session
+                            break
+                        if not ds.has_key(self.openid_session_identity_url_key):
+                            # Old session, without the identity url set
+                            # Save the identity url then (bascially adopt the session)
+                            ds[self.openid_session_identity_url_key] = info.identity_url
+                            ds.save()
+                            break
+                        if ds[self.openid_session_identity_url_key] == info.identity_url:
+                            # No collision
+                            break
+                        # We got us a collision
+                        # Make the thing unique
+                        collisions += 1
+                        remote_user = "%s (%d)" % (cremote_user, collisions+1)
 
                 req.authname = remote_user
 
