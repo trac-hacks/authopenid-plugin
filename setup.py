@@ -1,7 +1,7 @@
 from setuptools import setup
 
 PACKAGE = 'TracAuthOpenId'
-VERSION = '0.3'
+VERSION = '0.3.1'
 
 setup(
         name=PACKAGE,
