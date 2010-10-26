@@ -161,7 +161,6 @@ class AuthOpenIdPlugin(Component):
 
     def __init__(self):
         db = self.env.get_db_cnx()
-        self.store = self._getStore(db)
         oidutil.log = OpenIdLogger(self.env)
         self.env.log.debug("Compiling white-list")
         self.re_white_list = self.generate_re_list(self.white_list)
@@ -174,7 +173,7 @@ class AuthOpenIdPlugin(Component):
         if scheme == 'mysql':
             return MySQLStore(db.cnx.cnx)
         elif scheme == 'postgres':
-            return PostgreSQLStore(db)
+            return PostgreSQLStore(db.cnx.cnx)
         elif scheme == 'sqlite':
             return SQLiteStore(db.cnx.cnx)
         else:
@@ -210,10 +209,13 @@ class AuthOpenIdPlugin(Component):
         authname = None
         if req.remote_user:
             authname = req.remote_user
+            self.env.log.debug('authenticate. remote_user: %s' % authname)
         elif req.incookie.has_key('trac_auth'):
             authname = self._get_name_for_cookie(req, req.incookie['trac_auth'])
+            self.env.log.debug('authenticate. cookie: %s' % authname)
 
         if not authname:
+            self.env.log.debug('No OpenId authenticated user.')
             return None
 
         authname = authname.lower()
@@ -641,6 +643,7 @@ class AuthOpenIdPlugin(Component):
         req.outcookie['trac_auth'] = ''
         req.outcookie['trac_auth']['path'] = req.href()
         req.outcookie['trac_auth']['expires'] = -10000
+        self.env.log.debug('trac_auth cookie expired.')
 
     def _get_name_for_cookie(self, req, cookie):
         db = self.env.get_db_cnx()
