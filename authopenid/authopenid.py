@@ -540,9 +540,6 @@ class AuthOpenIdPlugin(Component):
                     cremote_user = remote_user
                     while True:
                         ds = DetachedSession(self.env, remote_user)
-                        if not ds.last_visit:
-                            # New session
-                            break
                         if not ds.has_key(self.openid_session_identity_url_key):
                             # Old session, without the identity url set
                             # Save the identity url then (bascially adopt the session)
