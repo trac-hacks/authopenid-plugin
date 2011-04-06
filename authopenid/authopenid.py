@@ -117,6 +117,9 @@ class AuthOpenIdPlugin(Component):
     black_list = Option('openid', 'black_list', '',
             """Comma separated list of denied OpenId addresses.""")
 
+    email_white_list = Option('openid', 'email_white_list', '',
+            """Comma separated list of allowed users, using the resolved SREG/AX email address. Use in combination with trusted identity patterns in white_list.""")
+
     check_list = Option('openid', 'check_list', None,
             """JSON service for openid check.""")
 
@@ -173,6 +176,8 @@ class AuthOpenIdPlugin(Component):
         self.re_white_list = self.generate_re_list(self.white_list)
         self.env.log.debug("Compiling black-list")
         self.re_black_list = self.generate_re_list(self.black_list)
+        self.env.log.debug("Compiling email white-list")
+        self.re_email_white_list = self.generate_re_list(self.email_white_list)
         self.providers_regexp = '.'
         if self.providers:
             self.providers_regexp = '^(' + str.join('|', re.split(' *, *', self.providers)) + ')$'
@@ -501,6 +506,8 @@ class AuthOpenIdPlugin(Component):
                             % (cgi.escape(info.endpoint.canonicalID),))
                 remote_user = info.endpoint.canonicalID
 
+            email = reg_info.has_key('email') and len(reg_info['email']) and reg_info['email']
+
             allowed = True
             if self.re_white_list:
                 self.env.log.debug("Filtering REMOTE_USER '%s' through white-list." % remote_user)
@@ -515,11 +522,18 @@ class AuthOpenIdPlugin(Component):
                     if item.match(remote_user):
                         allowed = False
                         self.env.log.debug("User black-listed.")
+            if allowed and email and self.re_email_white_list:
+                self.env.log.debug("Filtering email '%s' through email white-list." % email)
+                allowed = False
+                for item in self.re_email_white_list:
+                    if not allowed and item.match(email):
+                        allowed = True
+                        self.env.log.debug("User email white-listed.")
 
             if allowed and self.check_list:
                 params = {self.check_list_key: remote_user}
-                if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
-                    params['email'] = reg_info['email']
+                if reg_info and email:
+                    params['email'] = email
                 url = self.check_list + '?' + urllib.urlencode(params)
                 self.env.log.debug('OpenID check list URL: %s' % url)
                 result = simplejson.load(urllib.urlopen(url))
@@ -541,8 +555,8 @@ class AuthOpenIdPlugin(Component):
 
                 if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
                     req.session['name'] = reg_info['fullname']
-                if reg_info and reg_info.has_key('email') and len(reg_info['email']) > 0:
-                    req.session['email'] = reg_info['email']
+                if reg_info and email:
+                    req.session['email'] = email
 
                 self._commit_session(session, req) 
 
