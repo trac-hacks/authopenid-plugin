@@ -126,6 +126,9 @@ class AuthOpenIdPlugin(Component):
     check_list_username = Option('openid', 'check_list_username', None,
             """Username for openid Service.""")
 
+    providers = Option('openid', 'providers', [],
+            """Explicit set of provider names to display. E.g: google, yahoo, ...""")
+
     custom_provider_name = Option('openid', 'custom_provider_name', None,
             """ Custom OpenId provider name. """)
 
@@ -137,6 +140,10 @@ class AuthOpenIdPlugin(Component):
 
     custom_provider_image = Option('openid', 'custom_provider_image', '',
             """ Custom OpenId provider image. """)
+
+    custom_provider_size = Option('openid', 'custom_provider_size', 'small',
+            """ Custom OpenId provider image size (small or large).""")
+
 
     def _get_masked_address(self, address):
         if self.check_ip:
@@ -151,9 +158,9 @@ class AuthOpenIdPlugin(Component):
         generated_list = []
         if list_in_string:
             for item in list_in_string.split(','):
-                item = item.replace('.', '\\.')
-                item = item.replace('*', '.*')
                 item = item.strip()
+                item = re.escape(item)
+                item = '^' + item.replace('\*', '.*') + '$'
                 generated_list.append(re.compile(item))
                 self.env.log.debug("Item compiled: %s" % item)
 
@@ -166,7 +173,9 @@ class AuthOpenIdPlugin(Component):
         self.re_white_list = self.generate_re_list(self.white_list)
         self.env.log.debug("Compiling black-list")
         self.re_black_list = self.generate_re_list(self.black_list)
-
+        self.providers_regexp = '.'
+        if self.providers:
+            self.providers_regexp = '^(' + str.join('|', re.split(' *, *', self.providers)) + ')$'
 
     def _getStore(self, db):
         scheme, rest = self.connection_uri.split(':', 1)
@@ -270,10 +279,12 @@ class AuthOpenIdPlugin(Component):
             'signup': self.signup_link,
             'whatis': self.whatis_link,
             'css_class': 'error',
+            'providers_regexp': self.providers_regexp,
             'custom_provider_name': self.custom_provider_name,
             'custom_provider_label': self.custom_provider_label,
             'custom_provider_url': self.custom_provider_url,
             'custom_provider_image': self.custom_provider_image,
+            'custom_provider_size': self.custom_provider_size,
             }, None
 
     def _get_session(self, req):
@@ -323,10 +334,12 @@ class AuthOpenIdPlugin(Component):
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
                 'css_class': 'error',
+                'providers_regexp': self.providers_regexp,
                 'custom_provider_name': self.custom_provider_name,
                 'custom_provider_label': self.custom_provider_label,
                 'custom_provider_url': self.custom_provider_url,
                 'custom_provider_image': self.custom_provider_image,
+                'custom_provider_size': self.custom_provider_size,
                 }, None
 
         immediate = 'immediate' in req.args
@@ -346,10 +359,12 @@ class AuthOpenIdPlugin(Component):
                 'signup': self.signup_link,
                 'whatis': self.whatis_link,
                 'css_class': 'error',
+                'providers_regexp': self.providers_regexp,
                 'custom_provider_name': self.custom_provider_name,
                 'custom_provider_label': self.custom_provider_label,
                 'custom_provider_url': self.custom_provider_url,
                 'custom_provider_image': self.custom_provider_image,
+                'custom_provider_size': self.custom_provider_size,
                 }, None
         else:
             if request is None:
@@ -357,15 +372,17 @@ class AuthOpenIdPlugin(Component):
                     cgi.escape(openid_url),)
                 return 'openidlogin.html', {
                     'images': req.href.chrome('authopenid/images') + '/',
-                   'action': req.href.openidverify(),
-                   'message': msg,
-                   'signup': self.signup_link,
-                   'whatis': self.whatis_link,
-                   'css_class': 'error',
+                    'action': req.href.openidverify(),
+                    'message': msg,
+                    'signup': self.signup_link,
+                    'whatis': self.whatis_link,
+                    'css_class': 'error',
+                    'providers_regexp': self.providers_regexp,
                     'custom_provider_name': self.custom_provider_name,
                     'custom_provider_label': self.custom_provider_label,
                     'custom_provider_url': self.custom_provider_url,
                     'custom_provider_image': self.custom_provider_image,
+                    'custom_provider_size': self.custom_provider_size,
                    }, None
             else:
                 self._commit_session(session, req)
@@ -595,10 +612,12 @@ class AuthOpenIdPlugin(Component):
             'signup': self.signup_link,
             'whatis': self.whatis_link,
             'css_class': css_class,
+            'providers_regexp': self.providers_regexp,
             'custom_provider_name': self.custom_provider_name,
             'custom_provider_label': self.custom_provider_label,
             'custom_provider_url': self.custom_provider_url,
             'custom_provider_image': self.custom_provider_image,
+            'custom_provider_size': self.custom_provider_size,
             }, None
 
    # ITemplateProvider methods

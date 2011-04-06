@@ -120,6 +120,12 @@ var openid = {
             this.signin(box_id, true);
         }
     },
+    /* Remove providers that do not match the given RegExp */
+    filterProviders: function(re) {
+        for (var k in providers) if (!re.test(k)) delete providers[k];
+        for (var k in providers_small) if (!re.test(k)) delete providers_small[k];
+        for (var k in providers_large) if (!re.test(k)) delete providers_large[k];
+    },
     getBoxHTML: function(provider, box_size, image_ext) {
 
         var box_id = provider["name"].toLowerCase();
