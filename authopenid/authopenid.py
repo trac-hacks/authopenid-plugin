@@ -506,7 +506,7 @@ class AuthOpenIdPlugin(Component):
                             % (cgi.escape(info.endpoint.canonicalID),))
                 remote_user = info.endpoint.canonicalID
 
-            email = reg_info.has_key('email') and len(reg_info['email']) and reg_info['email']
+            email = reg_info is not None and reg_info.has_key('email') and len(reg_info['email']) and reg_info['email']
 
             allowed = True
             if self.re_white_list:
