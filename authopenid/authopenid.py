@@ -65,6 +65,13 @@ class AuthOpenIdPlugin(Component):
     openid_session_key = 'openid_session_data'
     openid_session_identity_url_key = 'openid_session_identity_url_data'
 
+    openid_ax_attrs=dict(
+        email='http://schema.openid.net/contact/email',
+        email2='http://axschema.org/contact/email',
+        firstname='http://axschema.org/namePerson/first',
+        lastname='http://axschema.org/namePerson/last',
+        )
+
     implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
 
     connection_uri = Option('trac', 'database', 'sqlite:db/trac.db',
@@ -420,8 +427,9 @@ class AuthOpenIdPlugin(Component):
                 request.addExtension(sreg_request)
 
                 ax_request = ax.FetchRequest()
-                attr_info = ax.AttrInfo('http://schema.openid.net/contact/email', required=True)
-                ax_request.add(attr_info)
+                for alias, uri in self.openid_ax_attrs.items():
+                    attr_info = ax.AttrInfo(uri, required=True, alias=alias)
+                    ax_request.add(attr_info)
                 request.addExtension(ax_request)
 
                 trust_root = self._get_trust_root(req)
@@ -479,19 +487,24 @@ class AuthOpenIdPlugin(Component):
             message = fmt % (cgi.escape(info.identity_url),)
             remote_user = info.identity_url
 
-            reg_info = None
+            sreg_info = sreg.SRegResponse.fromSuccessResponse(info) or {}
 
             ax_response = ax.FetchResponse.fromSuccessResponse(info)
+            ax_info = {}
             if ax_response:
-                ax_data = ax_response.getExtensionArgs()
-                email = ax_data.get('value.ext0.1', '')
-                if email:
-                    reg_info = {'email': email, 'fullname': email.split('@', 1)[0].replace('.', ' ').title()}
+                for alias, uri in self.openid_ax_attrs.items():
+                    values = ax_response.data.get(uri,[])
+                    if values:
+                        ax_info[alias] = values[0]
 
-            if not reg_info:
-                response = sreg.SRegResponse.fromSuccessResponse(info)
-                if response:
-                    reg_info = response.getExtensionArgs()
+            email = (ax_info.get('email')
+                     or ax_info.get('email2')
+                     or sreg_info.get('email'))
+
+            fullname = (' '.join(filter(None, map(ax_info.get,
+                                                  ('firstname', 'lastname'))))
+                        or sreg_info.get('fullname')
+                        or email.split('@',1)[0].replace('.', ' ').title())
 
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
@@ -505,8 +518,6 @@ class AuthOpenIdPlugin(Component):
                 message += ("  This is an i-name, and its persistent ID is %s"
                             % (cgi.escape(info.endpoint.canonicalID),))
                 remote_user = info.endpoint.canonicalID
-
-            email = reg_info is not None and reg_info.has_key('email') and len(reg_info['email']) and reg_info['email']
 
             allowed = True
             if self.re_white_list:
@@ -532,7 +543,7 @@ class AuthOpenIdPlugin(Component):
 
             if allowed and self.check_list:
                 params = {self.check_list_key: remote_user}
-                if reg_info and email:
+                if email:
                     params['email'] = email
                 url = self.check_list + '?' + urllib.urlencode(params)
                 self.env.log.debug('OpenID check list URL: %s' % url)
@@ -552,11 +563,10 @@ class AuthOpenIdPlugin(Component):
                 req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
 
                 req.session[self.openid_session_identity_url_key] = info.identity_url
-
-                if reg_info and reg_info.has_key('fullname') and len(reg_info['fullname']) > 0:
-                    req.session['name'] = reg_info['fullname']
-                if reg_info and email:
+                if email:
                     req.session['email'] = email
+                if fullname:
+                    req.session['name'] = fullname
 
                 self._commit_session(session, req) 
 
