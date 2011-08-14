@@ -19,6 +19,7 @@ import cgi
 import cPickle
 import re
 import time
+import itertools
 
 from trac.core import *
 from trac.config import Option, BoolOption, IntOption
@@ -98,6 +99,12 @@ class AuthOpenIdPlugin(Component):
 
     combined_username = BoolOption('openid', 'combined_username', False,
             """ Username will be written as username_in_remote_system <openid_url>. """)
+
+    lowercase_authname = BoolOption('openid', 'lowercase_authname', True,
+            """ Whether authnames should always be lower-cased.
+            Setting this to false generally makes more sense, however this
+            is backwards-incompatible if you already have user sessions
+            which you would like to preserve. """)
 
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
@@ -232,7 +239,8 @@ class AuthOpenIdPlugin(Component):
             self.env.log.debug('No OpenId authenticated user.')
             return None
 
-        authname = authname.lower()
+        if self.lowercase_authname:
+            authname = authname.lower()
 
         return authname
 
@@ -560,37 +568,45 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_session(session, req) 
 
-                if self.combined_username and req.session['name']:
-                    remote_user = '%s <%s>' % (req.session['name'], remote_user)
-                else:
-                    if req.session.has_key('name'):
-                        remote_user = req.session['name']
+                if req.session.get('name'):
+                    authname = req.session['name']
+                    if self.combined_username:
+                        authname = '%s <%s>' % (authname, remote_user)
 
-                    # Check if we generated a colliding remote_user and make the user unique
-                    collisions = 0
-                    cremote_user = remote_user
-                    while True:
-                        ds = DetachedSession(self.env, remote_user)
-                        if not ds.has_key(self.openid_session_identity_url_key):
-                            # Old session, without the identity url set
-                            # Save the identity url then (bascially adopt the session)
-                            ds[self.openid_session_identity_url_key] = info.identity_url
-                            ds.save()
-                            break
-                        if ds[self.openid_session_identity_url_key] == info.identity_url:
-                            # No collision
-                            break
-                        # We got us a collision
-                        # Make the thing unique
-                        collisions += 1
-                        remote_user = "%s (%d)" % (cremote_user, collisions+1)
+                # Possibly lower-case the authname.
+                if self.lowercase_authname:
+                    authname = authname.lower()
 
-                req.authname = remote_user
+                # Make authname unique in case of collisions
+                #
+                # XXX: We ought to first look for an existing authenticated
+                # ssession with matching identity_url, and just use that
+                # for the authid.  (E.g. what if the user changes his
+                # fullname at the openid provider?)  However, trac does
+                # not seem to provide an API for searching sessions other
+                # than by sid/authname.
+                #
+                def authnames(base):
+                    yield base
+                    for attempt in itertools.count(2):
+                        yield "%s (%d)" % (base, attempt)
+
+                for authname in authnames(authname):
+                    ds = DetachedSession(self.env, authname)
+                    if ds.last_visit == 0 and len(ds) == 0:
+                        # At least in 0.12.2, this mean no session exists.
+                        break
+                    ds_identity = ds.get(self.openid_session_identity_url_key)
+                    if ds_identity == info.identity_url:
+                        # No collision
+                        break
+
+                req.authname = authname
 
                 db = self.env.get_db_cnx()
                 cursor = db.cursor()
                 cursor.execute("INSERT INTO auth_cookie (cookie,name,ipnr,time) "
-                               "VALUES (%s, %s, %s, %s)", (cookie, remote_user,
+                               "VALUES (%s, %s, %s, %s)", (cookie, authname,
                                self._get_masked_address(req.remote_addr), int(time.time())))
                 db.commit()
 
