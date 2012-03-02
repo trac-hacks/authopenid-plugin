@@ -75,22 +75,44 @@ class AuthOpenIdPlugin(Component):
 
     implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
 
-    connection_uri = Option('trac', 'database', 'sqlite:db/trac.db',
-        """Database connection
-        [wiki:TracEnvironment#DatabaseConnectionStrings string] for this
-        project""")
+    # Do not declare options in the [trac] section.  We should not
+    # be creating new declared options there, and we should not be
+    # changing the system defaults for those options.
+    @property
+    def connection_uri(self):
+        return self.env.config.get('trac', 'database', 'sqlite:db/trac.db')
 
-    check_ip = BoolOption('trac', 'check_auth_ip', 'true',
-         """Whether the IP address of the user should be checked for
-         authentication (''since 0.9'').""")
+    @property
+    def check_ip(self):
+        # Whether the IP address of the user should be checked for
+        # authentication (''since 0.9'').""")
+        # NOTE: trac's default value is false.  We used to override
+        # that global default to true.
+        config = self.env.config
+        if config.has_option('trac', 'check_auth_ip', defaults=False):
+            return config.getbool('trac', 'check_auth_ip')
+        return True
+
+    # XXX: This appears not to be a standard trac options (as of 0.12)
     check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
             """What mask should be applied to user address.""")
 
-    trac_auth_expires = IntOption('trac', 'expires', 60*60*24,
-            """Specify how fast authentication expires.""")
+    # Do not declare these with IntOption... we do not want to create
+    # the options if they do not exist.  ('[trac] expires' does not
+    # seem to exist in stock trac 0.12.)
+    @property
+    def trac_auth_cookie_lifetime(self):
+        config = self.env.config
+        for opt in ['auth_cookie_lifetime', 'expires']:
+            if config.has_option('trac', opt):
+                return config.getint('trac', opt)
+        return 60*60*24
 
     timeout = BoolOption('openid', 'timeout', False,
-            """Specify if expiration time should act as timeout.""")
+            """Specify if expiration time should act as timeout.
+            If set, cookie lifetime will be extended to auth_cookie_lifetime
+            on each authenticated access.
+            """)
 
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
@@ -423,7 +445,7 @@ class AuthOpenIdPlugin(Component):
                     pape_request = pape.Request(requested_policies)
                     request.addExtension(pape_request)
 
-                # Let the sreg policy be configurable 
+                # Let the sreg policy be configurable
                 sreg_opt = []
                 sreg_req = []
                 sreg_fields = ['fullname', 'email']
@@ -565,10 +587,12 @@ class AuthOpenIdPlugin(Component):
 
             if allowed:
                 cookie = hex_entropy()
+                cookie_lifetime = self.trac_auth_cookie_lifetime
 
                 req.outcookie['trac_auth'] = cookie
                 req.outcookie['trac_auth']['path'] = req.href()
-                req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+                if cookie_lifetime > 0:
+                    req.outcookie['trac_auth']['expires'] = cookie_lifetime
 
                 req.session[self.openid_session_identity_url_key] = info.identity_url
                 if email:
@@ -576,7 +600,7 @@ class AuthOpenIdPlugin(Component):
                 if fullname:
                     req.session['name'] = fullname
 
-                self._commit_session(session, req) 
+                self._commit_session(session, req)
 
                 if req.session.get('name'):
                     authname = req.session['name']
@@ -678,11 +702,23 @@ class AuthOpenIdPlugin(Component):
             req.redirect(self.env.abs_href())
 
         # While deleting this cookie we also take the opportunity to delete
-        # cookies older than trac_auth_expires
+        # cookies older than trac_auth_cookie_lifetime
+        expires = self.trac_auth_cookie_lifetime
+        if expires <= 0:
+            expires = 10 * 24 * 60 * 60
+        stale = int(time.time()) - expires
+        authcookie = req.incookie.get('trac_auth')
+
         db = self.env.get_db_cnx()
         cursor = db.cursor()
-        cursor.execute("DELETE FROM auth_cookie WHERE name=%s OR time < %s",
-                       (req.authname, int(time.time()) - self.trac_auth_expires))
+        if authcookie:
+            cursor.execute("DELETE FROM auth_cookie"
+                           " WHERE cookie=%s OR time < %s",
+                           (authcookie.value, stale))
+        else:
+            cursor.execute("DELETE FROM auth_cookie"
+                           " WHERE name=%s OR time < %s",
+                           (req.authname, stale))
         db.commit()
         self._expire_cookie(req)
         custom_redirect = self.config['metanav'].get('logout.redirect')
@@ -702,26 +738,40 @@ class AuthOpenIdPlugin(Component):
         self.env.log.debug('trac_auth cookie expired.')
 
     def _get_name_for_cookie(self, req, cookie):
+        masked_addr = self._get_masked_address(req.remote_addr)
         db = self.env.get_db_cnx()
         cursor = db.cursor()
         if self.check_ip:
             cursor.execute("SELECT name FROM auth_cookie "
                            "WHERE cookie=%s AND ipnr=%s",
-                           (cookie.value, self._get_masked_address(req.remote_addr)))
+                           (cookie.value, masked_addr))
         else:
             cursor.execute("SELECT name FROM auth_cookie WHERE cookie=%s",
                            (cookie.value,))
+
         row = cursor.fetchone()
-        if not row:
+        if row:
+            name = row[0]
+            if self.timeout:
+                now = int(time.time())
+                if self.check_ip:
+                    cursor.execute("UPDATE auth_cookie SET time=%s "
+                                   "WHERE cookie=%s AND ipnr=%s AND name=%s",
+                                   (now, cookie.value, masked_addr, name))
+                else:
+                    cursor.execute("UPDATE auth_cookie SET time=%s "
+                                   "WHERE cookie=%s AND name=%s",
+                                   (now, cookie.value, name))
+
+                cookie_lifetime = self.trac_auth_cookie_lifetime
+                if cookie_lifetime > 0:
+                    req.outcookie['trac_auth'] = cookie.value
+                    req.outcookie['trac_auth']['path'] = req.href()
+                    req.outcookie['trac_auth']['expires'] = cookie_lifetime
+        else:
             # The cookie is invalid but we don't expire it because it might
             # be generated by different trac authentication mechanism.
-            return None
-        elif self.timeout:
-            cursor.execute("UPDATE auth_cookie SET time=%s "
-                           "WHERE cookie=%s AND name=%s",
-                           (int(time.time()), cookie.value, row[0]))
-            req.outcookie['trac_auth'] = cookie.value
-            req.outcookie['trac_auth']['path'] = req.href()
-            req.outcookie['trac_auth']['expires'] = self.trac_auth_expires
+            name = None
 
-        return row[0]
+        db.commit()
+        return name
