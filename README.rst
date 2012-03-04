@@ -2,10 +2,26 @@
 OpenID Authentication Plugin
 ============================
 
+News
+====
+
+2012-03-04
+----------
+
+`Dalius Dobravolskas`_, the original author of this plugin, no longer
+uses ``trac``, and thus is not so excited about maintaining this package.
+Since I am using this plugin, I've just cloned `his bitbucket
+repository`__ and will (slowly) work on updating the code and pushing
+out a new release.  (In the mean time, feel free to submit pull
+requests here__.)
+
+__ https://bitbucket.org/Dalius/authopenid-plugin/
+__ https://github.com/dairiki/authopenid-plugin/
+
 Description
 ===========
 
-This plugins allows to login to Trac using OpenID. Please, note that
+This plugin allows to login to Trac using OpenID. Please, note that
 this plugin works with Trac 0.11 version only. Later versions might
 work as well but I personally will not support them since I don't use
 Trac anymore myself.
@@ -13,25 +29,47 @@ Trac anymore myself.
 Download & Source
 =================
 
+The source repository is on github__.
+You may submit bug reports and pull requests there.
+
+__ https://github.com/dairiki/authopenid-plugin/
+
 There are several ways to install this plugin.
 
-1. There is Debian package for this plugin (http://packages.qa.debian.org/t/trac-authopenid.html)::
+1. You can install directly from PyPI_ using ``easy_install`` or pip_::
 
-    sudo aptitude install trac-authopenid
+       easy_install TracAuthOpenId
 
-2. If you have python-setuptools on your system you can use easy_install::
+   or::
 
-    sudo easy_install TracAuthOpenId
+       pip install TracAuthOpenId
 
-3. You can clone Mercurial repository somewhere in your system::
+2. There is `Debian package` for this plugin::
 
-    cd /your/3rdparty/src
-    hg clone https://Dalius@bitbucket.org/Dalius/authopenid-plugin/
+       sudo aptitude install trac-authopenid
 
-Then you should do following steps::
+3. You can clone git repository somewhere in your system::
 
-    cd authopenid-plugin
-    sudo python setup.py install
+       cd /your/3rdparty/src
+       git clone git://github.com/dairiki/authopenid-plugin.git
+
+   Then you should do following steps::
+
+       cd authopenid-plugin
+       python setup.py install
+
+   Alternatively, if you use pip_, you can  install directly from the git
+   repository::
+
+       pip install git+git://github.com/dairiki/authopenid-plugin.git
+
+For any of the above methods, if you want to do a system-wide
+installation, you will have to do this with *root* permissions
+(e.g. using ``su`` or ``sudo``).
+
+.. _PyPI: http://pypi.python.org/pypi/TracAuthOpenId/
+.. _Debian package: http://packages.qa.debian.org/t/trac-authopenid.html
+.. _pip: http://www.pip-installer.org/
 
 How to enable
 =============
@@ -51,7 +89,8 @@ Options
 =======
 
 This plugin has number of configuration options. Examples are best way
-to illustrate them::
+to illustrate them.
+(NB: some of this is out of date and needs to be updated)::
 
     [trac]
     # Check user IP address. IP addresses are masked because
@@ -124,3 +163,13 @@ to illustrate them::
     #custom_provider_label = Enter openidprovider username:
     #custom_provider_url = http://openidprovider/{username}
     #custom_provider_image = http://openidprovider/favicon.png
+
+
+Authors
+=======
+
+This plugin was written by `Dalius Dobravolskas`_.
+It is currently being maintained by `Jeff Dairiki`_.
+
+.. _Jeff Dairiki: mailto:dairiki@dairiki.org
+.. _Dalius Dobravolskas: mailto:dalius@sandbox.lt
