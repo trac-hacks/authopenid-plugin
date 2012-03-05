@@ -1,2 +1,2 @@
-recursive-include authopenid/templates *.html
-recursive-include authopenid/htdocs *
+include LICENSE.txt
+exclude .gitignore

@@ -2,22 +2,6 @@
 OpenID Authentication Plugin
 ============================
 
-News
-====
-
-2012-03-04
-----------
-
-`Dalius Dobravolskas`_, the original author of this plugin, no longer
-uses ``trac``, and thus is not so excited about maintaining this package.
-Since I am using this plugin, I've just cloned `his bitbucket
-repository`__ and will (slowly) work on updating the code and pushing
-out a new release.  (In the mean time, feel free to submit pull
-requests here__.)
-
-__ https://bitbucket.org/Dalius/authopenid-plugin/
-__ https://github.com/dairiki/authopenid-plugin/
-
 Description
 ===========
 
