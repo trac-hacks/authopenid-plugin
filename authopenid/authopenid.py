@@ -48,9 +48,9 @@ import struct
 import urllib
 
 try:
-    import simplejson # Necessary only for check_list option. Because of that it might be not installed by default
+    import json
 except ImportError:
-    pass
+    import simplejson as json           # python < 2.6
 
 class OpenIdLogger:
     """ Log all OpenID messages to debug. """
@@ -577,7 +577,7 @@ class AuthOpenIdPlugin(Component):
                     params['email'] = email
                 url = self.check_list + '?' + urllib.urlencode(params)
                 self.env.log.debug('OpenID check list URL: %s' % url)
-                result = simplejson.load(urllib.urlopen(url))
+                result = json.load(urllib.urlopen(url))
                 if not result[self.check_list_key]:
                     allowed = False
                 elif self.check_list_username:

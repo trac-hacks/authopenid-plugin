@@ -2,6 +2,16 @@
 Changes
 =======
 
+Next Release
+============
+
+- We will now use the json_ package if your python version includes it
+  (python >= 2.6).   For older pythons, the simplejson_ package is now
+  required.
+
+.. _json: http://docs.python.org/library/json.html
+.. _simplejson: https://github.com/simplejson/simplejson
+
 Version 0.3.6 (2012-03-05)
 ==========================
 

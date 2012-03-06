@@ -1,5 +1,6 @@
 from setuptools import setup
 import os
+import sys
 
 PACKAGE = 'TracAuthOpenId'
 VERSION = '0.3.6'
@@ -7,6 +8,15 @@ VERSION = '0.3.6'
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
+
+install_requires = [
+    "python-openid >= 2.1.0",
+    ]
+
+if sys.version_info[:2] < (2,6):
+    install_requires.extend([
+        'simplejson',
+        ])
 
 setup(
     name=PACKAGE,
@@ -49,7 +59,5 @@ setup(
             ],
         },
 
-    install_requires = [
-        "python-openid >= 2.1.0",
-        ],
+    install_requires=install_requires,
     )
