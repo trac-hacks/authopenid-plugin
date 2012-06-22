@@ -5,6 +5,27 @@ Changes
 Next Release
 ============
 
+Configuration Changes
+---------------------
+
+- **Security**: The default for ``[trac] check_auth_ip`` is now
+  ``False``.  If you want authorization to be tied to the clients IP
+  address *you must now explicitly set* this option to ``True``.
+
+  Prior to this change, if ``check_auth_ip`` was not explicitly set, we
+  ignored the global trac default (``False``) for the setting and behaved
+  as if it were set to ``True``.
+
+  This change is being made for the sake of backwards compatibility
+  with trac 0.11 whose ``Configuration.has_option`` method does not
+  support the optional ``defaults`` argument added in 0.12.  Without
+  that there seems to be no clean way to determine whether a setting
+  is explicitly set in the ``.ini`` file.
+
+
+New Features
+------------
+
 - We will now use the json_ package if your python version includes it
   (python >= 2.6).   For older pythons, the simplejson_ package is now
   required.

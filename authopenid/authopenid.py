@@ -88,10 +88,7 @@ class AuthOpenIdPlugin(Component):
         # authentication (''since 0.9'').""")
         # NOTE: trac's default value is false.  We used to override
         # that global default to true.
-        config = self.env.config
-        if config.has_option('trac', 'check_auth_ip', defaults=False):
-            return config.getbool('trac', 'check_auth_ip')
-        return True
+        return self.env.config.getbool('trac', 'check_auth_ip')
 
     # XXX: This appears not to be a standard trac options (as of 0.12)
     check_ip_mask = Option('trac', 'check_auth_ip_mask', '255.255.255.0',
