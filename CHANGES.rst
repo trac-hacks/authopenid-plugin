@@ -8,9 +8,10 @@ Next Release
 Configuration Changes
 ---------------------
 
-- **Security**: The default for ``[trac] check_auth_ip`` is now
-  ``False``.  If you want authorization to be tied to the clients IP
-  address *you must now explicitly set* this option to ``True``.
+- The default for ``[trac] check_auth_ip`` is now ``False``.  **This
+  has security implications**.  If you want authorization to be tied
+  to the clients IP address *you must now explicitly set* this option
+  to ``True``.
 
   Prior to this change, if ``check_auth_ip`` was not explicitly set, we
   ignored the global trac default (``False``) for the setting and behaved
