@@ -31,8 +31,16 @@ New Features
   (python >= 2.6).   For older pythons, the simplejson_ package is now
   required.
 
+
+- A minor hack has been made which allows at least basic functionality
+  under the development branch, trac-1.0 (formerly know as trac-0.13).
+  Note that only very basic tests under trac-1.0 have not been
+  performed.  (The code in this plugin still does not adhere to
+  the modern `trac db API`_ usage recommendations.)
+
 .. _json: http://docs.python.org/library/json.html
 .. _simplejson: https://github.com/simplejson/simplejson
+.. _trac db API: http://trac.edgewall.org/wiki/TracDev/DatabaseApi
 
 Version 0.3.6 (2012-03-05)
 ==========================

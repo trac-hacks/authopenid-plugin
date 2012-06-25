@@ -244,7 +244,8 @@ class AuthOpenIdPlugin(Component):
             c.execute("SELECT count(*) FROM oid_associations")
             return False
         except Exception, e:
-            db.rollback()
+            if hasattr(db, 'rollback'):
+                db.rollback()
             return True
 
     def upgrade_environment(self, db):

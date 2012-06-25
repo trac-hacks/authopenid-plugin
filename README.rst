@@ -7,6 +7,9 @@ Description
 
 This plugin allows to login to Trac using OpenID.  I use it with Trac 0.12.
 It was developed under Trac 0.11, so it should work there too.
+Version 0.4 of this plugin runs under trac 1.0 (formerly 0.13), but
+this configuration has not yet been extensively tested or used in
+production.
 
 Download & Source
 =================
