@@ -1,2 +1,6 @@
 include LICENSE.txt
+include README.rst
+include CHANGES.rst
 exclude .gitignore
+recursive-include authopenid/htdocs *.css *.gif *.ico *.js
+recursive-include authopenid/templates *.html

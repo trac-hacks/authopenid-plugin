@@ -2,6 +2,16 @@
 Changes
 =======
 
+Version 0.4.1 (2012-06-25)
+==========================
+
+This is a brown bag release.  Release 0.4 was unusable.
+
+Bug Fixes
+---------
+
+- Packaging: A number of crucial files were omitted from the manifest.
+
 Version 0.4 (2012-06-25)
 ========================
 
