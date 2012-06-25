@@ -2,8 +2,8 @@
 Changes
 =======
 
-Next Release
-============
+Version 0.4 (2012-06-25)
+========================
 
 Configuration Changes
 ---------------------
