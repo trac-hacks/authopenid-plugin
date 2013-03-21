@@ -132,8 +132,17 @@ class AuthOpenIdPlugin(Component):
             is backwards-incompatible if you already have user sessions
             which you would like to preserve. """)
 
-    use_nickname_as_authname = BoolOption('openid', 'use_nickname_as_authname', True,
+    use_nickname_as_authname = BoolOption('openid', 'use_nickname_as_authname', False,
             """ Whether the nickname as retrieved by SReg is used as username""")
+
+    openid_nickname_authorative = BoolOption('openid', 'openid_nickname_authorative', False,
+            """WARNING: Only enable this if you know what this mean!
+            This could make identity theft very easy if you do not control the OpenID provider!
+            Enabling this option makes the retrieved nickname from the 
+            OpenID provider authorative, i.e. it trusts the nickname
+            to be the unique username of the user. Enabling this disables
+            the collission checking, so two different OpenID urls may
+            suddenly get the same username if they have the same nickname""")
 
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
@@ -619,7 +628,7 @@ class AuthOpenIdPlugin(Component):
                 if self.lowercase_authname:
                     authname = authname.lower()
         
-                if not self.use_nickname_as_authname:
+                if not self.use_nickname_as_authname and self.openid_nickname_authorative:
                     # Make authname unique in case of collisions
                     #
                     # XXX: We ought to first look for an existing authenticated
