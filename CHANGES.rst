@@ -2,6 +2,22 @@
 Changes
 =======
 
+Version 0.4.2 (2013-03-24)
+==========================
+
+New Features
+------------
+
+These features were contributed by Patrick Uiterwijk.
+
+- New config option ``use_nickname_as_authname``.  If set, the OpenID
+  nickname will be used for the authname (or trac username).
+
+- New config option ``trust_authname``.  If set, trust the
+  OpenID-derived authname to be unique.  **Security warning**: do not
+  set this unless you know what you are doing.
+
+
 Version 0.4.1 (2012-06-25)
 ==========================
 
