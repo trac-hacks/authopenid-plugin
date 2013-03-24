@@ -132,6 +132,18 @@ class AuthOpenIdPlugin(Component):
             is backwards-incompatible if you already have user sessions
             which you would like to preserve. """)
 
+    use_nickname_as_authname = BoolOption('openid', 'use_nickname_as_authname', False,
+            """ Whether the nickname as retrieved by SReg is used as username""")
+
+    trust_authname = BoolOption('openid', 'trust_authname', False,
+            """WARNING: Only enable this if you know what this mean!
+            This could make identity theft very easy if you do not control the OpenID provider!
+            Enabling this option makes the retrieved authname from the 
+            OpenID provider authorative, i.e. it trusts the authname
+            to be the unique username of the user. Enabling this disables
+            the collission checking, so two different OpenID urls may
+            suddenly get the same username if they have the same authname""")
+
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
 
@@ -451,6 +463,8 @@ class AuthOpenIdPlugin(Component):
                     sreg_req = sreg_fields
                 else:
                     sreg_opt = sreg_fields
+                if self.use_nickname_as_authname:
+                    sreg_req.append('nickname')
                 sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
@@ -534,6 +548,8 @@ class AuthOpenIdPlugin(Component):
                         or sreg_info.get('fullname')
                         or email.split('@',1)[0].replace('.', ' ').title())
 
+            nickname = sreg_info.get('nickname')
+
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
             if self.strip_trailing_slash and remote_user[-1] == '/':
@@ -605,33 +621,37 @@ class AuthOpenIdPlugin(Component):
                     if self.combined_username:
                         authname = '%s <%s>' % (authname, remote_user)
 
+                if self.use_nickname_as_authname:
+                    authname = nickname
+
                 # Possibly lower-case the authname.
                 if self.lowercase_authname:
                     authname = authname.lower()
+        
+                if not self.trust_authname:
+                    # Make authname unique in case of collisions
+                    #
+                    # XXX: We ought to first look for an existing authenticated
+                    # ssession with matching identity_url, and just use that
+                    # for the authid.  (E.g. what if the user changes his
+                    # fullname at the openid provider?)  However, trac does
+                    # not seem to provide an API for searching sessions other
+                    # than by sid/authname.
+                    #
+                    def authnames(base):
+                        yield base
+                        for attempt in itertools.count(2):
+                            yield "%s (%d)" % (base, attempt)
 
-                # Make authname unique in case of collisions
-                #
-                # XXX: We ought to first look for an existing authenticated
-                # ssession with matching identity_url, and just use that
-                # for the authid.  (E.g. what if the user changes his
-                # fullname at the openid provider?)  However, trac does
-                # not seem to provide an API for searching sessions other
-                # than by sid/authname.
-                #
-                def authnames(base):
-                    yield base
-                    for attempt in itertools.count(2):
-                        yield "%s (%d)" % (base, attempt)
-
-                for authname in authnames(authname):
-                    ds = DetachedSession(self.env, authname)
-                    if ds.last_visit == 0 and len(ds) == 0:
-                        # At least in 0.12.2, this mean no session exists.
-                        break
-                    ds_identity = ds.get(self.openid_session_identity_url_key)
-                    if ds_identity == info.identity_url:
-                        # No collision
-                        break
+                    for authname in authnames(authname):
+                        ds = DetachedSession(self.env, authname)
+                        if ds.last_visit == 0 and len(ds) == 0:
+                            # At least in 0.12.2, this mean no session exists.
+                            break
+                        ds_identity = ds.get(self.openid_session_identity_url_key)
+                        if ds_identity == info.identity_url:
+                            # No collision
+                            break
 
                 req.authname = authname
 
