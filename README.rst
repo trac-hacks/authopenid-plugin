@@ -29,11 +29,26 @@ There are several ways to install this plugin.
 
        pip install TracAuthOpenId
 
-2. There is `Debian package` for this plugin::
+.. _PyPI: http://pypi.python.org/pypi/TracAuthOpenId/
+.. _pip: http://www.pip-installer.org/
+
+2. There is a `Debian package`_ for this plugin::
 
        sudo aptitude install trac-authopenid
 
-3. You can clone git repository somewhere in your system::
+.. _Debian package: http://packages.qa.debian.org/t/trac-authopenid.html
+
+3. `Patrick Uiterwijk`_ has packaged__ this plugin for Fedora::
+
+       yum install trac-authopenid-plugin
+
+   Should you have questions regarding the Fedora packaging, please file
+   them in the Fedora `bug tracker`_.
+
+__ https://apps.fedoraproject.org/packages/trac-authopenid-plugin
+.. _bug tracker: https://apps.fedoraproject.org/packages/trac-authopenid-plugin/bugs
+
+4. You can clone git repository somewhere in your system::
 
        cd /your/3rdparty/src
        git clone git://github.com/dairiki/authopenid-plugin.git
@@ -52,9 +67,6 @@ For any of the above methods, if you want to do a system-wide
 installation, you will have to do this with *root* permissions
 (e.g. using ``su`` or ``sudo``).
 
-.. _PyPI: http://pypi.python.org/pypi/TracAuthOpenId/
-.. _Debian package: http://packages.qa.debian.org/t/trac-authopenid.html
-.. _pip: http://www.pip-installer.org/
 
 How to enable
 =============
@@ -172,6 +184,8 @@ Authors
 
 This plugin was written by `Dalius Dobravolskas`_.
 It is currently being maintained by `Jeff Dairiki`_.
+Other contributors include: `Patrick Uiterwijk`_.
 
 .. _Jeff Dairiki: mailto:dairiki@dairiki.org
 .. _Dalius Dobravolskas: mailto:dalius@sandbox.lt
+.. _Patrick Uiterwijk: https://github.com/puiterwijk
