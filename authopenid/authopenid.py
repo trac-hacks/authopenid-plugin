@@ -586,18 +586,22 @@ class AuthOpenIdPlugin(Component):
                         self.env.log.debug("User email white-listed.")
 
             if allowed and self.check_list:
+                allowed = False
                 params = {self.check_list_key: remote_user}
                 if email:
                     params['email'] = email
                 url = self.check_list + '?' + urllib.urlencode(params)
                 self.env.log.debug('OpenID check list URL: %s' % url)
-                result = json.load(urllib.urlopen(url))
-                if not result[self.check_list_key]:
-                    allowed = False
-                elif self.check_list_username:
-                    new_user = result[self.check_list_username]
-                    if new_user:
-                        remote_user = new_user
+                try:
+                    result = json.load(urllib.urlopen(url))
+                    if result[self.check_list_key]:
+                        if self.check_list_username:
+                            authname = unicode(result[self.check_list_username])
+                            if not authname:
+                                raise ValueError("Bad value for username")
+                        allowed = True
+                except Exception, ex:
+                    self.env.log.error('OpenID check_list failed: %s' % ex)
 
             if allowed:
                 cookie = hex_entropy()
@@ -616,18 +620,19 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_session(session, req)
 
-                if req.session.get('name'):
-                    authname = req.session['name']
-                    if self.combined_username:
-                        authname = '%s <%s>' % (authname, remote_user)
+                if not (self.check_list and self.check_list_username):
+                    if req.session.get('name'):
+                        authname = req.session['name']
+                        if self.combined_username:
+                            authname = '%s <%s>' % (authname, remote_user)
 
-                if self.use_nickname_as_authname:
-                    authname = nickname
+                    if self.use_nickname_as_authname:
+                        authname = nickname
 
                 # Possibly lower-case the authname.
                 if self.lowercase_authname:
                     authname = authname.lower()
-        
+
                 if not self.trust_authname:
                     # Make authname unique in case of collisions
                     #
