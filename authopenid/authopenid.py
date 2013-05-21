@@ -596,8 +596,9 @@ class AuthOpenIdPlugin(Component):
                     result = json.load(urllib.urlopen(url))
                     if result[self.check_list_key]:
                         if self.check_list_username:
-                            authname = unicode(result[self.check_list_username])
-                            if not authname:
+                            cl_username = unicode(
+                                result[self.check_list_username])
+                            if not cl_username:
                                 raise ValueError("Bad value for username")
                         allowed = True
                 except Exception, ex:
@@ -620,14 +621,16 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_session(session, req)
 
-                if not (self.check_list and self.check_list_username):
-                    if req.session.get('name'):
-                        authname = req.session['name']
-                        if self.combined_username:
-                            authname = '%s <%s>' % (authname, remote_user)
-
-                    if self.use_nickname_as_authname:
-                        authname = nickname
+                if self.check_list and self.check_list_username:
+                    authname = cl_username
+                elif self.use_nickname_as_authname and nickname:
+                    authname = nickname
+                elif req.session.get('name'):
+                    authname = req.session['name']
+                    if self.combined_username:
+                        authname = '%s <%s>' % (authname, remote_user)
+                else:
+                    authname = remote_user
 
                 # Possibly lower-case the authname.
                 if self.lowercase_authname:
