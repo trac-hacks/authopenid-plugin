@@ -2,6 +2,26 @@
 Changes
 =======
 
+Version 0.4.3 (2013-05-22)
+==========================
+
+Bug Fixes
+---------
+
+- Fix so that ``check_list_username`` actually works.  Now one can
+  actually use the ``check_list`` web API to implement custom identity
+  to username mapping.
+
+- Fall back to using the identifier URL as the authname (rather than
+  throwing an exception) if the OpenID provider did not return a full
+  name (or nickname).
+
+Packaging
+---------
+
+- README.rst: Patrick Uiterwijk has packaged this plugin for Fedora
+
+
 Version 0.4.2 (2013-03-24)
 ==========================
 
