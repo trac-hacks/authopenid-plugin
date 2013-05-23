@@ -85,46 +85,132 @@ with default authentication mechanism.
 Options
 =======
 
-This plugin has number of configuration options. Examples are best way
-to illustrate them.
-(NB: some of this is out of date and needs to be updated)::
-
-    [trac]
-    # Check user IP address. IP addresses are masked because
-    # in some cases user is behind internal proxy and last
-    # number in IP address might vary. Disable check_auth_ip
-    # if you are using IPv6. If you still want to have IPv6
-    # support please contact me.
-    check_auth_ip = true
-    check_auth_ip_mask = 255.255.255.0
-    # number of seconds until cookie will expire
-    auth_cookie_lifetime = 86400
+This plugin has number of configuration options.  Here is an excerpt
+from an example config file which lists all available options::
 
     [openid]
 
-    # In some cases company might have internal OpenID server that
-    # automatically identifies user (e.g. windows SSPI). Also known as
-    # single sign-on.  default_openid = http://openid.ee Require sreg
-    # data
-    sreg_required = false
+    ################################################################
+    # Provider selection
 
-    # If you want username to be written as
-    # "username_in_remote_system <openid_url>" use:
-    #combined_username = true
+    # Single sign-on support
+    #
+    # If you want to support only a single OpenID provider and that
+    # provider allows the users to select his account as part of its
+    # authentication process, set default_openid to the OP identifier
+    # of the provider.  Then clicking the _OpenID Login_ link will take
+    # the user directly to the providers authentication interface,
+    # bypassing the openid provider/identity selection dialog.
+    #
+    # E.g. to use google as your sole openid provider, use
+    #default_openid = https://www.google.com/accounts/o8/id
+
+    # (If you have set default_openid, the identity selection dialog is
+    # not displayed, and the rest of the options in this section are moot.)
+
+    # Explicit set of provider names to display.  Should be set to a comman
+    # separated list of provider names.  Choices include:
+    # google, yahoo, aol, openid, myopenid, livejournal, flickr, technorati,
+    # wordpress, blogger, verisign, vidoop, claimid, as well as any
+    # custom provider you may have configured (via custom_provider_name).
+    # By default all known providers are listed.
+    #providers = google, myopenid
+
+    # Add a custom openid provider to the form
+    # provider name
+    #custom_provider_name = myprovider
+    # label
+    #custom_provider_label = Enter your username
+    # identity template
+    #custom_provider_url = http://myprovider.example.net/{username}
+    # URL to image/icon
+    #custom_provider_image = /static/icons/myprovider.png
+    # image size (small or large)
+    #custom_provider_size = small
+
+    # What is OpenID link.
+    whatis_link = http://openid.net/what/
+    # Sign-up link
+    signup_link = http://openid.net/get
+
+    ################################################################
+    # Authorization
+
+    # Identity white and black lists
+    #
+    # IMPORTANT: strip_protocol and strip_trailing_slash (see below) affectswhat
+    # openid will be given to white_list or black_list
+
+    # white_list: If set, only identities matching this list will be accepted
+    # E.g. to allow only google and myopenid provided identities, use
+    #white_list = https://www.google.com/accounts/o8/id?id=*, http://*.myopenid.com/
+
+    # black_list: If set, matching identities will not be accepted
+    #black_list = http://spammer.myopenid.com/
+
+    # Comma separated list of allowed users, using the email address
+    # resolved via SREG or AX. Use in combination with trusted
+    # identity patterns in white_list.
+    #email_white_list = joe@example.com
+
+    # In addition to white and black lists you can use external web
+    # service for allowing users into trac. To control that you must
+    # use check_list and check_list_key option. It will generate URL:
+    #
+    #     <check_list>?<check_list_key>=openid&email=email
+    #
+    # email will be attached only if available.
+    #
+    # It expects JSON result in following format:
+    #
+    #     {"<check_list_key>": true}
+    #
+    # Your check_list web app may also be used to map openid
+    # identifiers to your own internal authnames (usernames). (See
+    # check_list_username below.)
+    #
+    # IMPORTANT: strip_protocol and strip_trailing_slash affects what
+    # openid will be send to service
+    #
+    # You can use this option to map your OpenIDs to internal username.
+    #check_list = http://your.site.com/openidallow
+
+    # The parameter name used both for passing the claimed identity
+    # to the authorization app, as well as for returning the authorization
+    # status.  Defaults to "check_list".
+    #check_list_key = check_list
+
+    # Expiration time acts as timeout. E.g. if expiration time is 24
+    # hour and you login again in those 24 hours. Expiration time is
+    # extended for another 24 hours. (Default: false)
+    timeout = false
+
+    ################################################################
+    # OpenID protocol and extensions
+
+    # Require sreg data
+    sreg_required = false
 
     # Default PAPE method to request from OpenID provider.
     # pape_method =
 
-    # What is OpenID link.
-    whatis = http://openid.net/what/
-    # Sign-up link
-    signup = http://openid.net/get
-    # Gmail login button (default: true)
-    # gmail = false
     # In some cases you might want allow users to login to different
     # projects using different OpenIDs. In that case don't use
     # absolute trust root.
     absolute_trust_root = false
+
+    ################################################################
+    # Authname (trac SID) generation
+
+    # Force authname to lowercase (default true)
+    #lowercase_authname = true
+
+    # Use SREG nickname as authname (default false)
+    #use_nickname_as_authname = false
+
+    # If you want username to be written as
+    # "username_in_remote_system <openid_url>" use:
+    #combined_username = true
 
     # Remove http:// or https:// from URL that is used as
     # username. (Default: false)
@@ -133,50 +219,42 @@ to illustrate them.
     # Remove trailing slash from URL that is user as username (Defaul: false)
     strip_trailing_slash = false
 
-    # Expiration time acts as timeout. E.g. if expiration time is 24
-    # hour and you login again in those 24 hours. Expiration time is
-    # extended for another 24 hours. (Default: false)
-    timeout = false
-
-    # White and black lists.
-    # E.g.: Allows all the people from Lithuania, Latvia or Estonia
-    # except delfi domain.
-    # IMPORTANT: strip_protocol and strip_trailing_slash affects what
-    # openid will be given to white_list or black_list
-    #white_list = *.lt, *.lv, *.ee
-    #black_list = *.delfi.lt,*.delfi.lv,*.delfi.ee
-
-    # In addition to white and black lists you can use external
-    # service for allowing users into trac. To control that you must
-    # use check_list and check_list_key option. It will generate URL:
+    # If you have an external authorization web app configured (via
+    # check_list), you may also use that to map openid identifiers to
+    # local usernames (authnames).   Set check_list_username to the name
+    # of a parameter which will be used to return the authname.
+    # E.g. if check_list_username=username, the expected JSON result from
+    # the authorization service is
     #
-    #     check_list?check_list_key=openid&email=email
+    #     {"check_list": true, "username": "Peter"}
     #
-    # email will be attached only if available.
-    #
-    # It expects JSON result in following format:
-    #
-    #     {"check_list_key": true}
-    #
-    # IMPORTANT: strip_protocol and strip_trailing_slash affects what
-    # openid will be send to service
-    # NOTE: You can specify check_list_username as well. In that case
-    # JSON service should return new username as
-    # well. E.g. check_list_username=username. Expected result from
-    # JSON service is:
-    #
-    #     {"check_list_key": true, "username": "Peter"}
-    #
-    # You can use this option to map your OpenIDs to internal username.
-    #check_list = http://your.site.com/openidallow
-    #check_list_key = check_list
     #check_list_username=
+
+    # Normally, the authname is not trusted to uniquely identify the user.
+    # (What if another user has already registered with the same username?)
+    # By default, a small integer is appended to the authname to make it
+    # unique.  To default this, you may set trust_authname to true.
     #
-    # You can add one custom openid provider:
-    #custom_provider_name = test
-    #custom_provider_label = Enter openidprovider username:
-    #custom_provider_url = http://openidprovider/{username}
-    #custom_provider_image = http://openidprovider/favicon.png
+    # WARNING: Setting this can is many circumstances make identity theft
+    # very easy.  Only set this if you understand what you are doing.
+    #trust_authname = false
+
+
+    # Authentication cookie controls.
+    #
+    # Note that these are in the [trac] config section.
+
+    [trac]
+
+    # Check user IP address. IP addresses are masked because
+    # in some cases user is behind internal proxy and last
+    # number in IP address might vary.
+    # (Does not currently support IPv6.)
+    check_auth_ip = true
+    check_auth_ip_mask = 255.255.255.0
+
+    # number of seconds until cookie will expire
+    auth_cookie_lifetime = 86400
 
 
 Authors
