@@ -22,7 +22,7 @@ import time
 import itertools
 
 from trac.core import *
-from trac.config import Option, BoolOption, IntOption
+from trac.config import Option, BoolOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
@@ -138,7 +138,7 @@ class AuthOpenIdPlugin(Component):
     trust_authname = BoolOption('openid', 'trust_authname', False,
             """WARNING: Only enable this if you know what this mean!
             This could make identity theft very easy if you do not control the OpenID provider!
-            Enabling this option makes the retrieved authname from the 
+            Enabling this option makes the retrieved authname from the
             OpenID provider authorative, i.e. it trusts the authname
             to be the unique username of the user. Enabling this disables
             the collission checking, so two different OpenID urls may
