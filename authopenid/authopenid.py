@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Dalius Dobravolskas <dalius@sandbox.lt>
+# Copyright (C) 2007-2013 Dalius Dobravolskas and Geoffrey T. Dairiki
 # All rights reserved.
 #
 # This software is licensed using the same licence as Trac:
 # http://trac.edgewall.org/wiki/TracLicense.
 #
-# Author: Dalius Dobravolskas <dalius@sandbox.lt>
-#
+# Original Author: Dalius Dobravolskas <dalius@sandbox.lt>
+# Current Maintainer: Jeff Dairiki <dairiki@dairiki.org>
+
 # Most probably you will want to add following lines to your configuration file:
 #
 #   [components]
