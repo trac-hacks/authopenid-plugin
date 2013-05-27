@@ -10,8 +10,7 @@ except ImportError:                     # pragma: no cover
     import pickle
 
 from trac.config import BoolOption
-from trac.core import Component, ExtensionPoint, implements
-from trac.db.api import DatabaseManager
+from trac.core import Component, ExtensionPoint, implements, TracError
 from trac.db.util import ConnectionWrapper
 from trac.env import IEnvironmentSetupParticipant
 
@@ -31,6 +30,7 @@ from authopenid.exceptions import (
     SetupNeeded,
     )
 from authopenid.interfaces import IOpenIDConsumer, IOpenIDExtensionProvider
+from authopenid.util import get_db_scheme, table_exists
 
 # XXX: It looks like python-openid is going to switch to using the
 # stock logging module.  We'll need to detect when that happens.
@@ -124,8 +124,7 @@ class openid_store(object):
         self.env = env
         self.db = db
 
-        dburi = DatabaseManager(env).connection_uri
-        scheme = dburi.split(':', 1)[0]
+        scheme = get_db_scheme(env)
         self.store_class = self.STORE_CLASSES.get(scheme)
 
     def __enter__(self):
@@ -178,6 +177,8 @@ class OpenIDConsumer(Component):
     consumer_class = openid.consumer.consumer.Consumer # testing
 
     consumer_skey = 'openid_session_data'
+
+    schema_version_key = 'authopenid.openid_store_version'
 
     # IOpenIDConsumer methods
 
@@ -276,26 +277,46 @@ class OpenIDConsumer(Component):
 
     # IEnvironmentSetupParticipant methods
 
-    # FIXME: save versioning info in system table?
-
     def environment_created(self):
-        with openid_store(self.env) as store:
-            if hasattr(store, 'createTables'):
-                store.createTables()
+        with self.env.db_transaction as db:
+            self.upgrade_environment(db)
 
     def environment_needs_upgrade(self, db):
+        have = self._get_schema_version()
+        if have is None:
+            return True
         with openid_store(self.env, db) as store:
-            if hasattr(store, 'createTables'):
-                c = db.cursor()
-                try:
-                    c.execute("SELECT count(*) FROM oid_associations")
-                except Exception, e:
-                    if hasattr(db, 'rollback'):
-                        db.rollback()
-                    return True
-        return False
+            want = 1 if hasattr(store, 'createTables') else 0
+
+        if have > want:
+            raise TracError("Downgrading unsupported: "
+                            "openid store version is %d, we want %d"
+                            % (have, want))
+        return have < want
 
     def upgrade_environment(self, db):
+        version = self._get_schema_version()
         with openid_store(self.env, db) as store:
-            if hasattr(store, 'createTables'):
+            current = 1 if hasattr(store, 'createTables') else 0
+        assert version in (0, None) and version != current
+
+        # Be careful: if have == None, we may still have the tables
+        # left from before we started recording schema version in the
+        # system table.
+        if current == 1 and not table_exists(self.env, 'oid_associations'):
+            with openid_store(self.env, db) as store:
                 store.createTables()
+
+        if version is None:
+            sql = "INSERT INTO system (value, name) VALUES (%s, %s)"
+        else:
+            sql = "UPDATE system SET value=%s WHERE name=%s"
+        db(sql, (str(current), self.schema_version_key))
+
+        self.log.info("Upgraded openid store schema from %r to %d"
+                      % (version, current))
+
+    def _get_schema_version(self):
+        rows = self.env.db_query(" SELECT value FROM system WHERE name=%s",
+                                 (self.schema_version_key,))
+        return int(rows[0][0]) if rows else None

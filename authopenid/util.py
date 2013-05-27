@@ -3,6 +3,9 @@
 
 from urlparse import urljoin, urlparse, urlunparse
 
+from trac.core import TracError
+from trac.db.api import DatabaseManager
+
 def sanitize_referer(referer, base_url):
     """ Ensure that ``referer`` is 'under' ``base_url``.
 
@@ -46,3 +49,35 @@ def split_path_info(path):
             else:
                 clean.append(segment)
     return [''] + clean
+
+
+
+_LIST_TABLES_SQL = {
+    'sqlite':
+    """SELECT name FROM sqlite_master
+       WHERE type='table' AND NOT name='sqlite_sequence'""",
+
+    'postgres':
+    """SELECT tablename FROM pg_tables
+       WHERE schemaname = ANY (current_schemas(false))""",
+
+    'mysql': "SHOW TABLES",
+    }
+
+def get_db_scheme(env):
+    dburi = DatabaseManager(env).connection_uri
+    scheme = dburi.split(':', 1)[0]
+    return scheme
+
+def list_tables(env):
+    # Based on code from TracMigratePlugin by Jun Omae
+    scheme = get_db_scheme(env)
+    try:
+        sql = _LIST_TABLES_SQL[scheme]
+    except KeyError:
+        raise TracError("Unsupported database scheme '%s'" % scheme)
+
+    return set(row[0] for row in env.db_query(sql))
+
+def table_exists(env, tablename):
+    return tablename in list_tables(env)

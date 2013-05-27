@@ -56,6 +56,10 @@ setup(
     entry_points={
         'trac.plugins': [
             '%s = authopenid' % PACKAGE,
+            'OpenIDConsumer = authopenid.openid_consumer',
+            'UserLogin = authopenid.useradmin',
+            # FIXME:
+            'Something = authopenid.extension_providers',
             ],
         },
 

@@ -13,27 +13,30 @@ from __future__ import absolute_import
 
 from pkg_resources import resource_filename
 import re
-import itertools
 
 from trac.core import Component, ExtensionPoint, implements
 from trac.config import (
     BoolOption,
     ChoiceOption,
     ConfigurationError,
+    ExtensionOption,
     ListOption,
     Option,
     )
 from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
-from trac.web.main import IRequestHandler, IAuthenticator
+from trac.web.main import IRequestHandler
 from trac.web.auth import LoginModule
 
 from genshi.builder import tag
 
 from authopenid.exceptions import LoginWarning, LoginError
-from authopenid.interfaces import IAuthorizationProvider
-from authopenid.openid_consumer import OpenIDConsumer
-from authopenid.useradmin import UserManager, UserLogin
+from authopenid.interfaces import (
+    IAuthorizationProvider,
+    IOpenIDConsumer,
+    IUserLogin,
+    )
+from authopenid.useradmin import UserManager
 from authopenid.util import sanitize_referer
 
 ## Options we used to support but no longer do
@@ -152,6 +155,11 @@ class AuthOpenIdPlugin(Component):
 
     authentication_providers = ExtensionPoint(IAuthorizationProvider)
 
+    user_login = ExtensionOption(
+        'openid', 'user_login_provider', IUserLogin, default='UserLogin')
+    openid_consumer = ExtensionOption(
+        'openid', 'openid_consumer', IOpenIDConsumer, default='OpenIDConsumer')
+
     def __init__(self):
         config = self.config
 
@@ -172,14 +180,8 @@ class AuthOpenIdPlugin(Component):
             'custom_provider_size': self.custom_provider_size,
             }
 
+        # FIXME: should be ExtensionOption?
         self.user_manager = UserManager(self.env)
-        self.user_login = UserLogin(self.env)
-        self.openid_consumer = OpenIDConsumer(self.env)
-
-        if not self.env.is_component_enabled(UserLogin):
-            self.log.debug("Enabling UserLogin component")
-            self.env.enable_component(UserLogin)
-
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
@@ -209,6 +211,7 @@ class AuthOpenIdPlugin(Component):
 
     # IRequestHandler methods
     def match_request(self, req):
+        # FIXME:
         return re.match('/(openidlogin|openidverify|openidprocess|openidlogout)\??.*', req.path_info)
 
     def process_request(self, req):

@@ -7,6 +7,7 @@ from trac.web.auth import IAuthenticator, LoginModule
 from trac.web.session import DetachedSession
 
 from authopenid.exceptions import IdentifierNotUnique, UserExists
+from authopenid.interfaces import IUserLogin
 from authopenid.util import sanitize_referer
 
 class UserManager(Component):
@@ -80,7 +81,7 @@ class UserLogin(Component):
     We currently use ``trac.web.auth.LoginModule`` to manage the auth cookies.
     """
 
-    implements(IAuthenticator)
+    implements(IAuthenticator, IUserLogin)
 
     def __init__(self):
         self.login_module = LoginModule(self.env)

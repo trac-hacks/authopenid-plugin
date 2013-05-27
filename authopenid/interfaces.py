@@ -41,3 +41,14 @@ class IOpenIDConsumer(Interface):
     def complete(req):
         """ Process authentication response.
         """
+
+class IUserLogin(Interface):
+    def login(req, username, referer=None):
+        """ Log the user in as ``username`` and redirect to ``referer``
+
+        The current session must be anonymous.
+        """
+
+    def logout(req, referer=None):
+        """ Log the user out and redirect to ``referer``
+        """

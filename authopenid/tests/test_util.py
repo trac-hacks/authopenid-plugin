@@ -5,6 +5,9 @@ if sys.version_info >= (2, 7):
 else:
     import unittest2 as unittest
 
+from trac.test import EnvironmentStub
+from trac import db_default
+
 BASE_URL = 'http://example.com/trac/'
 
 class Test_sanitize_referer(unittest.TestCase):
@@ -48,3 +51,27 @@ class Test_split_path_info(unittest.TestCase):
             ('/a/../../b', '/b'),
             ]:
             self.assertEqual(split_path_info(path), expect.split('/'))
+
+class TestDbHelpers(unittest.TestCase):
+    def setUp(self):
+        self.env = EnvironmentStub()
+
+    def tearDown(self):
+        self.env.destroy_db()
+
+    def test_get_db_scheme(self):
+        from authopenid.util import get_db_scheme
+        self.env.config.set('trac', 'database', 'foo:bar')
+        self.assertEqual(get_db_scheme(self.env), 'foo')
+
+    def test_list_tables(self):
+        from authopenid.util import list_tables
+
+        default_tables = set(table.name for table in db_default.schema)
+        self.assertEqual(list_tables(self.env), default_tables)
+
+    def test_table_exists(self):
+        from authopenid.util import table_exists
+
+        self.assertTrue(table_exists(self.env, 'system'))
+        self.assertFalse(table_exists(self.env, 'missing_table'))

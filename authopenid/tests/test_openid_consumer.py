@@ -249,9 +249,8 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
         return OpenIDConsumer(self.env)
 
     def list_tables(self):
-        with self.env.db_query as db:
-            return set(table for table, in db("SELECT name FROM sqlite_master"
-                                              " WHERE type='table'"))
+        from authopenid.util import list_tables
+        return set(list_tables(self.env))
 
     def assertOIDTablesExist(self):
         tables = self.list_tables()
@@ -263,25 +262,41 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
         for table in 'oid_associations', 'oid_nonces':
             self.assertNotIn(table, tables)
 
+    def assert_schema_version_is(self, expected_version):
+        consumer = self.get_consumer()
+        system = dict(self.env.db_query("SELECT name, value FROM system"))
+        version = system.get(consumer.schema_version_key)
+        version = int(version) if version is not None else None
+        self.assertEquals(version, expected_version,
+                          "Expected schema version %r, got %r"
+                          % (expected_version, version))
+
     def test_environment_created(self):
         consumer = self.get_consumer()
         consumer.environment_created()
         self.assertOIDTablesExist()
+        self.assert_schema_version_is(1)
 
-    def test_environment_upgrade(self):
+    def test_environment_upgrade_from_scratch(self):
+        consumer = self.get_consumer()
+        with self.env.db_query as db:
+            self.assertTrue(consumer.environment_needs_upgrade(db))
+        with self.env.db_transaction as db:
+            consumer.upgrade_environment(db)
+        with self.env.db_query as db:
+            self.assertFalse(consumer.environment_needs_upgrade(db))
+        self.assertOIDTablesExist()
+        self.assert_schema_version_is(1)
+
+    def test_environment_upgrade_from_legacy(self):
+        # Fake legacy install: have tables, but no entry in system table
         consumer = self.get_consumer()
         with self.env.db_transaction as db:
             consumer.upgrade_environment(db)
-        self.assertOIDTablesExist()
+            db("DELETE FROM system WHERE name=%s",
+               (consumer.schema_version_key,))
 
-    def test_environment_needs_upgrade(self):
-        consumer = self.get_consumer()
-
-        with self.env.db_query as db:
-            self.assertTrue(consumer.environment_needs_upgrade(db))
-        self.test_environment_upgrade()
-        with self.env.db_query as db:
-            self.assertFalse(consumer.environment_needs_upgrade(db))
+        self.test_environment_upgrade_from_scratch()
 
 
 class DummyException(Exception):
