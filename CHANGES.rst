@@ -2,6 +2,25 @@
 Changes
 =======
 
+Next Version
+============
+
+Bug Fixes
+---------
+
+- Previously, if no email address was returned via AX or SREG, the
+  ``email_white_list`` config option was being ignored.  Now if
+  ``email_white_list`` is set and no email address can be determined,
+  authorization will be denied.
+
+Documentation
+-------------
+
+- Updated the example config in the README__ so that it more closely
+  matches current reality.  (Baby steps...)
+
+__ https://github.com/dairiki/authopenid-plugin#options
+
 Version 0.4.3 (2013-05-22)
 ==========================
 

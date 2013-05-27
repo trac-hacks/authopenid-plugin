@@ -577,13 +577,14 @@ class AuthOpenIdPlugin(Component):
                     if item.match(remote_user):
                         allowed = False
                         self.env.log.debug("User black-listed.")
-            if allowed and email and self.re_email_white_list:
-                self.env.log.debug("Filtering email '%s' through email white-list." % email)
+            if allowed and self.re_email_white_list:
+                self.env.log.debug("Filtering email %r through email white-list." % email)
                 allowed = False
-                for item in self.re_email_white_list:
-                    if not allowed and item.match(email):
-                        allowed = True
-                        self.env.log.debug("User email white-listed.")
+                if email:
+                    for item in self.re_email_white_list:
+                        if not allowed and item.match(email):
+                            allowed = True
+                            self.env.log.debug("User email white-listed.")
 
             if allowed and self.check_list:
                 allowed = False
