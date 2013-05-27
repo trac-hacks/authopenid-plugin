@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from base64 import b64decode, b64encode
 from contextlib import contextmanager
+import sys
 from urlparse import urlparse, urlunparse
 try:
     import cPickle as pickle
@@ -11,6 +12,7 @@ except ImportError:                     # pragma: no cover
 from trac.config import BoolOption
 from trac.core import Component, ExtensionPoint, implements
 from trac.db.api import DatabaseManager
+from trac.db.util import ConnectionWrapper
 from trac.env import IEnvironmentSetupParticipant
 
 import openid.consumer.consumer
@@ -91,40 +93,66 @@ class PickleSession(dict):
     setdefault = _session_mutator(dict.setdefault)
     update = _session_mutator(dict.update)
 
+class openid_store(object):
+    """ Context manager for adapting trac db to python-openid store
 
-STORE_CLASSES = {
-    'sqlite': openid.store.sqlstore.SQLiteStore,
-    'mysql': openid.store.sqlstore.MySQLStore,
-    'postgres': openid.store.sqlstore.PostgreSQLStore,
-    }
+    Usage::
 
-@contextmanager
-def openid_store(env, db=None):
-    """ Get a suitable openid store
+        with openid_store(env) as store:
+            # do stuff which requires an ``python-openid store.
+
+    The context manager will take care of choosing the appropriate
+    ``OpenIDStore`` implementation, and of starting and committing
+    (or rolling back on exception) a db transaction.
+
+    If you are in the midst of a transaction and already have a trac
+    connection object, then you can explicitly pass the connection::
+
+        with openid_store(env, db) as store:
+            # do stuff which requires an ``python-openid store.
+
+    In this case, no db transaction management will be done.
+
     """
-    dburi = DatabaseManager(env).connection_uri
-    scheme = dburi.split(':', 1)[0]
-    try:
-        store_class = STORE_CLASSES[scheme]
-    except KeyError:
-        # no store class for database type, punt...
-        yield openid.store.memstore.MemoryStore()
-    else:
-        if db:
-            yield store_class(db.cnx.cnx)
-        else:
-            with env.db_transaction as db_:
-                yield store_class(db_.cnx.cnx)
+    STORE_CLASSES = {
+        'sqlite': openid.store.sqlstore.SQLiteStore,
+        'mysql': openid.store.sqlstore.MySQLStore,
+        'postgres': openid.store.sqlstore.PostgreSQLStore,
+        }
 
-# FIXME: needed?
-# class NonCommittingConnectionWrapper(ConnectionWrapper):
-#     """ A connection proxy which intercepts ``commit` and ``rollback`` messages
-#     """
-#     def commit(self):
-#         pass
+    def __init__(self, env, db=None):
+        self.env = env
+        self.db = db
 
-#     def rollback(self):
-#         pass
+        dburi = DatabaseManager(env).connection_uri
+        scheme = dburi.split(':', 1)[0]
+        self.store_class = self.STORE_CLASSES.get(scheme)
+
+    def __enter__(self):
+        self._exit = lambda type_, value, tb: None # dummy exit fn
+
+        if self.store_class is None:
+            # no store class for database type, punt...
+            return openid.store.memstore.MemoryStore()
+
+        conn = self.db
+        if conn is None:
+            tm = self.env.db_transaction
+            self._exit = tm.__exit__
+            conn = tm.__enter__()
+
+        try:
+            # Get the raw connection object
+            # (See http://trac.edgewall.org/ticket/7849)
+            while isinstance(conn, ConnectionWrapper):
+                conn = conn.cnx
+            return self.store_class(conn)
+        except:
+            self._exit(*sys.exc_info())
+            raise
+
+    def __exit__(self, type_, value, tb):
+        self._exit(type_, value, tb)
 
 
 class OpenIDConsumer(Component):
