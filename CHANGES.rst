@@ -34,9 +34,16 @@ table.)  Because of this:
   has always used a default of 0 (cookie expires at the end of the browser
   session).  We now use that default as well.
 
+Features
+--------
+
+- Hide the confusing (to me at least) "Continue" button in the
+  autosubmit form redirector page.
+
 
 Next Version
 ============
+
 
 Bug Fixes
 ---------
@@ -53,6 +60,7 @@ Documentation
   matches current reality.  (Baby steps...)
 
 __ https://github.com/dairiki/authopenid-plugin#options
+
 
 Version 0.4.3 (2013-05-22)
 ==========================

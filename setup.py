@@ -10,7 +10,7 @@ README = open(os.path.join(here, 'README.rst')).read()
 CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
 
 install_requires = [
-    "python-openid >= 2.1.0",
+    "python-openid >= 2.2.0",
     ]
 
 if sys.version_info[:2] < (2,6):

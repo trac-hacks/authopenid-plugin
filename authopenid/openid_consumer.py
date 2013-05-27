@@ -183,12 +183,10 @@ class OpenIDConsumer(Component):
                     log.debug('Redirecting to: %s' % redirect_url)
                     req.redirect(redirect_url)  # noreturn (raises RequestDone)
                 else:
-                    form_id = 'autosubmit'
-                    form_html = auth_request.formMarkup(
-                        trust_root, return_to, immediate=immediate,
-                        form_tag_attrs={'id': form_id})
-                    data = {'form': form_html, 'id': form_id}
-                    return 'autosubmitform.html', data, None
+                    # return an auto-submit form
+                    form_html = auth_request.htmlMarkup(
+                        trust_root, return_to, immediate=immediate)
+                    req.send(form_html, 'text/html')
 
     def complete(self, req, current_url=None):
         if current_url is None:

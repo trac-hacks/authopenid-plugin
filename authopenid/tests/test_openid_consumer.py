@@ -166,10 +166,16 @@ class TestOpenIDConsumer(unittest.TestCase):
             self.consumer_begin()
 
     def test_begin_autosubmit(self):
-        self.auth_request.shouldSendRedirect.return_value = False
+        auth_request = self.auth_request
+        auth_request.shouldSendRedirect.return_value = False
 
-        tmpl, data, ctype = self.consumer_begin()
-        self.assertEqual(tmpl, 'autosubmitform.html')
+        consumer = self.get_consumer()
+        req = self.get_request()
+        consumer.begin(req, 'http://example.net', 'http://example.com/')
+
+        form_html = auth_request.htmlMarkup.return_value
+        self.assertIn(call.send(form_html, "text/html"), req.mock_calls)
+
 
     def test_begin_with_extension_providers(self):
         provider = Mock(name='provider')
