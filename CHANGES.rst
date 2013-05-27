@@ -2,6 +2,39 @@
 Changes
 =======
 
+Big Rewrite In Progress
+=======================
+
+Non Backward-Compatible Configuration Changes
+---------------------------------------------
+
+- The ``[openid] timeout`` configuration variable is no longer
+  supported.  (It was only of marginal use, in any case.)
+
+We now use the stock ``trac.web.auth.LoginModule`` to handle the auth
+cookie manipulations.  (We were already using its ``auth_cookie``
+table.)  Because of this:
+
+- The ``[openid] lowercase_authname`` configuration variable is no
+  longer supported.  You should now use ``[trac] ignore_auth_case``,
+  which does the same thing, instead.  Note, however, that the default
+  for ``lowercase_authname`` was ``True``, while the default for
+  ``ignore_auth_case`` is ``False``.  The latter generally makes more
+  sense, however changing this is *backwards-incompatible* if you
+  already have user sessions which you would like to preserve. (So, if
+  you had ``lowercase_authname=false``, just delete it — you're all
+  good.  Otherwise you should set ``ignore_auth_case=true`` in your
+  ``[trac]`` section.)
+
+- The ``[trac] check_auth_ip_mask`` configuration variable is no longer
+  supported.
+
+- The default value for ``[trac] auth_cookie_lifetime`` has changed.
+  We used to use a default of 24 hours, however the stock ``LoginModule``
+  has always used a default of 0 (cookie expires at the end of the browser
+  session).  We now use that default as well.
+
+
 Next Version
 ============
 

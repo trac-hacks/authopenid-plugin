@@ -8,3 +8,5 @@
 /TracAuthOpenId.egg-info/requires.txt
 /TracAuthOpenId.egg-info/SOURCES.txt
 /TracAuthOpenId.egg-info/top_level.txt
+/.coverage
+/cover/

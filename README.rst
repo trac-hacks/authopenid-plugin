@@ -2,6 +2,20 @@
 OpenID Authentication Plugin
 ============================
 
+.. CAUTION:: This branch (rewrite_) is currently under heavy
+   refactorization.  I do not advise using it in production.  (For
+   that, please continue to use the 0.4.x releases from PyPI_, or the
+   master_ branch from git.)
+
+   Currently it should run under trac 1.0 or 1.1; I plan to eventually make
+   it run under 0.12 as well.
+
+   Comments, suggestions and bug reports are welcome.
+
+.. _rewrite: https://github.com/dairiki/authopenid-plugin/commit/rewrite
+.. _master: https://github.com/dairiki/authopenid-plugin/commit/master
+
+
 Description
 ===========
 
