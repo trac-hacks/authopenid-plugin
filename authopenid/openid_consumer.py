@@ -198,6 +198,9 @@ class OpenIDConsumer(Component):
                 consumer = self.consumer_class(session, store)
                 response = consumer.complete(req.args, current_url)
 
+                if response.status != SETUP_NEEDED:
+                    session.clear()
+
                 if response.status == FAILURE:
                     raise AuthenticationFailed(
                         response.message, response.identity_url)
