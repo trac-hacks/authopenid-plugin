@@ -1,4 +1,3 @@
-from genshi.builder import tag
 from genshi.core import Markup
 
 class UserExists(KeyError):
@@ -65,45 +64,3 @@ class NotAuthorized(LoginError):
     """
     def __init__(self):
         super(NotAuthorized, self).__init__("Not authorized")
-
-class AuthenticationCancelled(LoginWarning):
-    """ The user cancelled the authentication process.
-    """
-    def __init__(self, message="Authentication cancelled"):
-        super(AuthenticationCancelled, self).__init__(message)
-
-class AuthenticationFailed(LoginError):
-    """ OpenId Authentication failed.
-    """
-    def __init__(self, reason=None, identity_url=None):
-        message = tag("Authentication failed")
-        if identity_url:
-            message(" ", tag.code(identity_url))
-        if reason:
-            message(": ", reason)
-        super(AuthenticationFailed, self).__init__(
-            message, reason, identity_url)
-
-    @property
-    def reason(self):
-        return self.args[1]
-
-    @property
-    def identity_url(self):
-        return self.args[2]
-
-class SetupNeeded(LoginWarning):
-    """ Immediate authentication failed.
-
-    Immediate (non-interactive) authentication was requested, however, user
-    interaction at the authentication provider is required.
-    """
-    def __init__(self, setup_url=None):
-        message = "Setup needed"
-        if setup_url:
-            message = tag.a(message, href=setup_url)
-        super(SetupNeeded, self).__init__(message, setup_url)
-
-    @property
-    def setup_url(self):
-        return self.args[1]

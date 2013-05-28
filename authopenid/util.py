@@ -2,6 +2,7 @@
 """
 from __future__ import absolute_import
 
+from collections import MutableMapping
 from urlparse import urljoin, urlparse, urlunparse
 
 from trac.core import TracError
@@ -85,3 +86,57 @@ def list_tables(env):
 
 def table_exists(env, tablename):
     return tablename in list_tables(env)
+
+class MultiDict(MutableMapping):
+    """ A dictionary with multiple values per key
+
+    This behaves like an ordinary dictionary except that is can store
+    multiple values for a single key.
+
+    Multiple values can only be created by using the ``add`` method,
+    (or by ``__init__`` when given an iterable as the only argument.)
+    The multiple values can be accessed using the ``getall``method.
+
+    (The ``__setitem__`` method replaces any existing values; if there
+    are multiple values ``__getitem__`` returns only the first.)
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.data = dict()
+        if args:
+            values, = args
+            if callable(getattr(values, 'items', None)):
+                values = values.items()
+            for k, v in values:
+                self.add(k, v)
+        self.update(kwargs)
+
+    def add(self, key, value):
+        self.data.setdefault(key, []).append(value)
+
+    def getall(self, key, default=()):
+        try:
+            return tuple(self.data[key])
+        except KeyError:
+            return default
+
+    def __getitem__(self, key):
+        return self.data[key][0]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __setitem__(self, key, value):
+        self.data[key] = [value]
+
+    def __delitem__(self, key):
+        del self.data[key]
+
+    def __repr__(self):
+        init = tuple((k, v)
+                     for k, data in self.data.items()
+                     for v in data)
+        return "%s(%r)" % (self.__class__.__name__, init)

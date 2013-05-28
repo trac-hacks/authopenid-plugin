@@ -5,8 +5,9 @@ if sys.version_info >= (2, 7):
 else:
     import unittest2 as unittest
 
-from trac.test import EnvironmentStub
+from trac.core import TracError
 from trac import db_default
+from trac.test import EnvironmentStub
 
 BASE_URL = 'http://example.com/trac/'
 
@@ -70,8 +71,77 @@ class TestDbHelpers(unittest.TestCase):
         default_tables = set(table.name for table in db_default.schema)
         self.assertEqual(list_tables(self.env), default_tables)
 
+        self.env.config.set('trac', 'database', 'foodb://')
+        with self.assertRaises(TracError):
+            list_tables(self.env)
+
     def test_table_exists(self):
         from authopenid.util import table_exists
 
         self.assertTrue(table_exists(self.env, 'system'))
         self.assertFalse(table_exists(self.env, 'missing_table'))
+
+class TestMultiDict(unittest.TestCase):
+
+    def make_one(self, *args, **kwargs):
+        from authopenid.util import MultiDict
+        return MultiDict(*args, **kwargs)
+
+    def test_init_iter(self):
+        md = self.make_one([('a', 'a1'), ('b', 'b1'), ('a', 'a2')])
+        self.assertEqual(md['a'], 'a1')
+        self.assertEqual(md['b'], 'b1')
+        self.assertEqual(md.getall('a'), ('a1', 'a2'))
+
+    def test_init_mapping(self):
+        md = self.make_one(dict(a='a1'))
+        self.assertEqual(md['a'], 'a1')
+
+    def test_init_kw(self):
+        md = self.make_one([('a', 'a1')], a='a2')
+        self.assertEqual(md.getall('a'), ('a2',))
+
+    def test_add(self):
+        md = self.make_one(a='a1')
+        md.add('a', 'a2')
+        self.assertEqual(md.getall('a'), ('a1', 'a2'))
+
+    def test_getall(self):
+        md = self.make_one(a='a1')
+        self.assertEqual(md.getall('a'), ('a1',))
+        self.assertEqual(md.getall('b'), ())
+        self.assertEqual(md.getall('b', 'dflt'), 'dflt')
+
+    def test_getitem(self):
+        md = self.make_one([('a', 'a1'), ('a', 'a2')])
+        self.assertEqual(md['a'], 'a1')
+        with self.assertRaises(KeyError):
+            md['b']
+
+    def test_iter(self):
+        md = self.make_one([('a', 'a1'), ('a', 'a2')])
+        self.assertEqual(list(md), ['a'])
+
+    def test_len(self):
+        md = self.make_one()
+        self.assertEqual(len(md), 0)
+        md.add('a', 'a1')
+        self.assertEqual(len(md), 1)
+
+    def test_setitem(self):
+        md = self.make_one([('a', 'a1'), ('a', 'a2')])
+        md['a'] = 'a3'
+        self.assertEqual(md.getall('a'), ('a3',))
+
+    def test_delitem(self):
+        md = self.make_one([('a', 'a1'), ('a', 'a2')])
+        del md['a']
+        self.assertNotIn('a', md)
+        with self.assertRaises(KeyError):
+            del md['a']
+
+    def test_repr(self):
+        from authopenid.util import MultiDict
+        md = self.make_one([('a', 'a1'), ('a', 'a2')])
+        copy = eval(repr(md))
+        self.assertEquals(set(copy.items()), set(md.items()))

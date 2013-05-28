@@ -9,28 +9,27 @@ try:
 except ImportError:                     # pragma: no cover
     import pickle
 
-from trac.config import BoolOption
-from trac.core import ExtensionPoint, implements, TracError
+from trac.config import BoolOption, OrderedExtensionsOption
+from trac.core import implements, TracError
 from trac.db.util import ConnectionWrapper
 from trac.env import IEnvironmentSetupParticipant
 
 import openid.consumer.consumer
-from openid.consumer.consumer import (
-    DiscoveryFailure,
-    SUCCESS, FAILURE, CANCEL, SETUP_NEEDED,
-    )
+from openid.consumer.consumer import SUCCESS, FAILURE, CANCEL, SETUP_NEEDED
+
 from openid import oidutil
 import openid.store.memstore
 import openid.store.sqlstore
 
-from authopenid.compat import Component, TransactionContextManager
-from authopenid.exceptions import (
-    LoginError,
+from authopenid.api import (
+    IOpenIDExtensionProvider,
+    OpenIDIdentifier,
     AuthenticationFailed,
     AuthenticationCancelled,
     SetupNeeded,
     )
-from authopenid.interfaces import IOpenIDConsumer, IOpenIDExtensionProvider
+from authopenid.compat import Component, TransactionContextManager
+from authopenid.interfaces import IOpenIDConsumer
 from authopenid.util import get_db_scheme, table_exists
 
 # XXX: It looks like python-openid is going to switch to using the
@@ -173,7 +172,8 @@ class OpenIDConsumer(Component):
         project.
         """)
 
-    openid_extension_providers = ExtensionPoint(IOpenIDExtensionProvider)
+    openid_extension_providers = OrderedExtensionsOption(
+        'openid', 'openid_extension_providers', IOpenIDExtensionProvider)
 
     consumer_class = openid.consumer.consumer.Consumer # testing
 
@@ -188,9 +188,6 @@ class OpenIDConsumer(Component):
 
         log = self.env.log
 
-        if not identifier:
-            raise LoginError("Enter an OpenID Identifier")
-
         if trust_root is None:
             trust_root = self._get_trust_root(req)
 
@@ -198,11 +195,9 @@ class OpenIDConsumer(Component):
         with openid_store(self.env) as store:
             with openid_logging_to(log):
                 consumer = self.consumer_class(session, store)
-                try:
-                    # FIXME: raises ProtocolError?
-                    auth_request = consumer.begin(identifier)
-                except DiscoveryFailure, exc:
-                    raise LoginError("OpenID discovery failed: %s" % exc)
+                # NB: raises openid.consumer.discover.DiscoveryFailure
+                # FIXME: (and maybe ProtocolError?)
+                auth_request = consumer.begin(identifier)
 
                 for provider in self.openid_extension_providers:
                     provider.add_to_auth_request(req, auth_request)
@@ -241,28 +236,22 @@ class OpenIDConsumer(Component):
                 assert response.status == SUCCESS
 
                 if response.endpoint.canonicalID:
-                    # You should authorize i-name users by their
-                    # canonicalID, rather than their more
-                    # human-friendly identifiers.  That way their
-                    # account with you is not compromised if their
-                    # i-name registration expires and is bought by
-                    # someone else.
+                    # Authorize i-name users by their canonicalID,
+                    # rather than their human-friendly identifiers.
+                    # That way their account with you is not
+                    # compromised if their i-name registration expires
+                    # and is bought by someone else.
 
-                    # FIXME: is this right?
-                    identifier = response.endpoint.canonicalID
+                    claimed_identifier = response.endpoint.canonicalID
                 else:
-                    identifier = response.identity_url
+                    claimed_identifier = response.identity_url
 
-                # FIXME: strip_protocol, strip_trailing_slash?
-                # These used to be applied before checking white/blacklists
+                identifier = OpenIDIdentifier(claimed_identifier)
 
-                extension_data = {}
                 for provider in self.openid_extension_providers:
-                    ext_data = provider.parse_response(response)
-                    if ext_data:
-                        extension_data.update(ext_data)
+                    provider.parse_response(response, identifier)
 
-                return identifier, extension_data
+                return identifier
 
     def _get_trust_root(self, req):
         root = urlparse(req.abs_href() + '/')

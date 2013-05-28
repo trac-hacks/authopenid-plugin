@@ -7,7 +7,7 @@ if not hasattr(unittest, 'skipIf'):
 import trac.db.api
 from trac.test import EnvironmentStub
 
-from mock import call, Mock, patch, sentinel
+from mock import call, Mock, patch
 
 is_modern_trac = hasattr(trac.db.api, 'QueryContextManager')
 skipIfModernTrac = unittest.skipIf(is_modern_trac, "running under trac >= 1.0")

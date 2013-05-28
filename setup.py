@@ -64,11 +64,15 @@ setup(
 
     entry_points={
         'trac.plugins': [
+            # This just determines which modules trac loads initially.
+            # I don't think the entry point names matter.
             '%s = authopenid' % PACKAGE,
             'OpenIDConsumer = authopenid.openid_consumer',
             'UserLogin = authopenid.useradmin',
             # FIXME:
-            'Something = authopenid.extension_providers',
+            #'Something = authopenid.extension_providers',
+            'Authorizers = authopenid.authorization',
+            'OpenIDExtensionsProvider = authopenid.openid_ext',
             ],
         },
 

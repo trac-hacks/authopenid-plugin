@@ -1,0 +1,7 @@
+[run]
+branch = True
+
+include = authopenid/*
+omit =
+    .tox/*
+    */test_*

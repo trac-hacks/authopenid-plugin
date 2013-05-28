@@ -14,14 +14,14 @@ from openid import oidutil
 from openid.consumer.consumer import SUCCESS, FAILURE, CANCEL, SETUP_NEEDED
 from openid.consumer.discover import DiscoveryFailure
 
-from mock import ANY, call, Mock, patch, sentinel
+from mock import ANY, call, Mock, patch
 
-from authopenid.compat import modernize_env
-from authopenid.exceptions import (
+from authopenid.api import (
     AuthenticationFailed,
     AuthenticationCancelled,
     SetupNeeded,
     )
+from authopenid.compat import modernize_env
 
 class Test_openid_logging_to(unittest.TestCase):
     def setUp(self):
@@ -89,9 +89,31 @@ class TestPickleSession(unittest.TestCase):
         self.assertEqual(session, {})
 
 
-class TestOpenIDConsumer(unittest.TestCase):
-
+class OIDConsumerTestMixin(object):
     BASE_URL = 'http://example.net/trac'
+
+    def get_consumer(self):
+        from authopenid.openid_consumer import OpenIDConsumer
+        return OpenIDConsumer(self.env)
+
+    def get_request(self):
+        req = Mock(name='Request')
+        req.session = dict()
+        req.authname = 'anonymous'
+        req.abs_href = Href(self.BASE_URL)
+        def redirect(url, permanent=False):
+            raise Redirected(url, permanent)
+        req.redirect.side_effect = redirect
+        return req
+
+    def consumer_begin(self,
+                       identifier='http://example.net/',
+                       return_to='http://example.com/'):
+        consumer = self.get_consumer()
+        req = self.get_request()
+        return consumer.begin(req, identifier, return_to)
+
+class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
 
     def setUp(self):
         from authopenid.openid_consumer import OpenIDConsumer
@@ -115,49 +137,20 @@ class TestOpenIDConsumer(unittest.TestCase):
         self.response = self.oid_consumer.complete.return_value
         self.response.status = SUCCESS
         self.response.endpoint.canonicalID = None
-        self.response.identity_url = sentinel.identity
+        self.response.identity_url = 'IDENTITY'
 
         self.env = EnvironmentStub()
 
-
-    def get_consumer(self):
-        from authopenid.openid_consumer import OpenIDConsumer
-        return OpenIDConsumer(self.env)
-
-    def get_request(self):
-        req = Mock(name='Request')
-        req.session = dict()
-        req.authname = 'anonymous'
-        req.abs_href = Href(self.BASE_URL)
-        def redirect(url, permanent=False):
-            raise Redirected(url, permanent)
-        req.redirect.side_effect = redirect
-        return req
-
-    def consumer_begin(self,
-                       identifier='http://example.net/',
-                       return_to='http://example.com/'):
-        consumer = self.get_consumer()
-        req = self.get_request()
-        return consumer.begin(req, identifier, return_to)
 
     def consumer_complete(self):
         consumer = self.get_consumer()
         req = self.get_request()
         return consumer.complete(req)
 
-    def assertRaisesLoginError(self, *args, **kwargs):
-        from authopenid.exceptions import LoginError
-        return self.assertRaises(LoginError, *args, **kwargs)
-
-    def test_begin_no_identifier(self):
-        with self.assertRaisesLoginError():
-            self.consumer_begin(identifier=None)
-
     def test_begin_discovery_failure(self):
         self.oid_consumer.begin.side_effect = DiscoveryFailure('msg', 'status')
 
-        with self.assertRaisesLoginError():
+        with self.assertRaises(DiscoveryFailure):
             self.consumer_begin()
 
     def test_begin_redirect(self):
@@ -187,20 +180,25 @@ class TestOpenIDConsumer(unittest.TestCase):
             call.add_to_auth_request(ANY, self.auth_request)])
 
     def test_complete(self):
-        self.assertEqual(self.consumer_complete(), (sentinel.identity, {}))
+        identifier = self.consumer_complete()
+        self.assertEqual(str(identifier), self.response.identity_url)
 
     def test_complete_iname(self):
-        self.response.endpoint.canonicalID = sentinel.iname
-        self.assertEqual(self.consumer_complete(), (sentinel.iname, {}))
+        self.response.endpoint.canonicalID = 'INAME'
+        identifier = self.consumer_complete()
+        self.assertEqual(str(identifier), 'INAME')
 
     def test_complete_with_extension_providers(self):
-        for ext_data in ({'a': 'b'}, {'c': 'd'}):
-            provider = Mock(name='provider')
-            provider.parse_response.return_value = ext_data
-            self.extension_providers.append(provider)
+        provider = Mock(name='provider')
+        data = (('a', 'b'), ('c', 'd'))
+        def parse_response(response, identifier):
+            for k, v in data:
+                identifier.signed_data.add(k, v)
+        provider.parse_response = parse_response
+        self.extension_providers.append(provider)
 
-        identity, extension_data = self.consumer_complete()
-        self.assertEqual(extension_data, {'a': 'b', 'c': 'd'})
+        identifier = self.consumer_complete()
+        self.assertEqual(set(identifier.signed_data.items()), set(data))
 
     def test_complete_failure(self):
         self.response.status = FAILURE
@@ -231,7 +229,7 @@ class TestOpenIDConsumer(unittest.TestCase):
 
 
 
-class TestOpenIDConsumerIntegration(unittest.TestCase):
+class TestOpenIDConsumerIntegration(unittest.TestCase, OIDConsumerTestMixin):
     """ Currently this tests that the IEnvironmentSetupParticipant methods
     work with sqlite.
 
@@ -246,9 +244,13 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
         #self.env.global_databasemanager.shutdown()
         self.env.destroy_db()
 
-    def get_consumer(self):
-        from authopenid.openid_consumer import OpenIDConsumer
-        return OpenIDConsumer(self.env)
+    def test_begin_with_no_identifier_fails(self):
+        with self.assertRaises(Exception):
+            self.consumer_begin(identifier=None)
+
+    def test_begin_with_crap_identifier_fails(self):
+        with self.assertRaises(DiscoveryFailure):
+            self.consumer_begin(identifier='foo')
 
     def list_tables(self):
         from authopenid.util import list_tables

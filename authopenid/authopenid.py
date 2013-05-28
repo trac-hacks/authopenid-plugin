@@ -14,7 +14,7 @@ from __future__ import absolute_import
 from pkg_resources import resource_filename
 import re
 
-from trac.core import Component, ExtensionPoint, implements
+from trac.core import Component, implements, TracError
 from trac.config import (
     BoolOption,
     ChoiceOption,
@@ -22,6 +22,7 @@ from trac.config import (
     ExtensionOption,
     ListOption,
     Option,
+    OrderedExtensionsOption,
     )
 from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
@@ -29,10 +30,15 @@ from trac.web.main import IRequestHandler
 from trac.web.auth import LoginModule
 
 from genshi.builder import tag
+from genshi.core import Markup
 
-from authopenid.exceptions import LoginWarning, LoginError
+from authopenid.api import (
+    DiscoveryFailure,
+    NegativeAssertion,
+    NotAuthorized,
+    IOpenIDAuthorizationPolicy,
+    )
 from authopenid.interfaces import (
-    IAuthorizationProvider,
     IOpenIDConsumer,
     IUserLogin,
     )
@@ -71,9 +77,6 @@ class AuthOpenIdPlugin(Component):
     strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
             """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
 
-    sreg_required = BoolOption('openid', 'sreg_required', 'false',
-            """Whether SREG data should be required or optional.""")
-
     combined_username = BoolOption('openid', 'combined_username', False,
             """ Username will be written as username_in_remote_system <openid_url>. """)
 
@@ -89,38 +92,12 @@ class AuthOpenIdPlugin(Component):
             the collission checking, so two different OpenID urls may
             suddenly get the same username if they have the same authname""")
 
-    pape_method = Option('openid', 'pape_method', None,
-            """Default PAPE method to request from OpenID provider.""")
-
     signup_link = Option('openid', 'signup', 'http://openid.net/get/',
             """Signup link""")
 
     whatis_link = Option('openid', 'whatis', 'http://openid.net/what/',
             """What is OpenId link.""")
 
-    white_list = ListOption('openid', 'white_list',
-        doc="""Comma separated list of allowed OpenId identities.
-
-        If set, only OpenID identities that match one of these patterns
-        will be allowed to log in.
-        """)
-
-    black_list = ListOption('openid', 'black_list',
-        doc="""Comma separated list of denied OpenId identities.
-
-        If set, any OpenID identities that match one of these patterns
-        will not be allowed to log in.
-        """)
-
-    email_white_list = ListOption('openid', 'email_white_list',
-        doc="""Comma separated list of allowed user email address.
-
-        If set, only users whose email address (as determined via SREG or AX)
-        matches a pattern in this list will be allowed to log in.
-
-        This probably should be used in combination with trusted
-        identity patterns in white_list.
-        """)
 
     check_list = Option('openid', 'check_list', None,
             """JSON service for openid check.""")
@@ -153,7 +130,8 @@ class AuthOpenIdPlugin(Component):
         doc=""" Custom OpenId provider image size (small or large).""")
 
 
-    authentication_providers = ExtensionPoint(IAuthorizationProvider)
+    authorization_policies = OrderedExtensionsOption(
+        'openid', 'authorization_policies', IOpenIDAuthorizationPolicy)
 
     user_login = ExtensionOption(
         'openid', 'user_login_provider', IUserLogin, default='UserLogin')
@@ -183,6 +161,9 @@ class AuthOpenIdPlugin(Component):
         # FIXME: should be ExtensionOption?
         self.user_manager = UserManager(self.env)
 
+        if len(self.authorization_policies) == 0:
+            raise TracError("No OpenID authorization_policies are configured")
+
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
         return 'openidlogin'
@@ -196,6 +177,7 @@ class AuthOpenIdPlugin(Component):
                    tag.a('OpenID Login', href=login_url))
         elif not any(self.env.is_component_enabled(comp)
                      for comp in _LOGIN_MODULES):
+            # FIXME: back to username/SID
             yield ('metanav', 'openidlogin',
                    'logged in as %s' % (req.session.get('name')
                                         or req.authname))
@@ -250,16 +232,18 @@ class AuthOpenIdPlugin(Component):
         openid_identifier = req.args.get('openid_identifier')
         immediate = 'immediate' in req.args # FIXME: used?
 
+        if not openid_identifier:
+            chrome.add_warning(req, "Enter an OpenID Identifier")
+            return self._login_form(req)
+
         return_to = req.abs_href('openidprocess')
 
         try:
             return self.openid_consumer.begin(
                 req, openid_identifier, return_to, immediate=immediate)
-        except LoginWarning, ex:
-            chrome.add_notice(req, ex)
-        except LoginError, ex:
-            chrome.add_warning(req, ex)
-        return self._login_form(req)
+        except DiscoveryFailure as exc:
+            chrome.add_warning(req, Markup(exc))
+            return self._login_form(req)
 
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
@@ -267,52 +251,71 @@ class AuthOpenIdPlugin(Component):
         assert req.authname == 'anonymous'
 
         try:
-            identifier, extension_data = self.openid_consumer.complete(req)
+            identifier = self.openid_consumer.complete(req)
+        except NegativeAssertion as exc:
+            chrome.add_warning(req, Markup(exc))
+            return self._login_form(req)
 
-            for provider in self.authentication_providers:
-                provider.authorize(identifier, extension_data)
+        try:
+            self._check_authorization(identifier)
+        except NotAuthorized as exc:
+            chrome.add_warning(req, Markup(exc))
+            return self._login_form(req)
 
-            username = self.user_manager.get_username(identifier)
-            # XXX: update name/email if account already exists?
-            if username is None:
-                # FIXME: abstract this
-                # Create new session (or "account")
-                # FIXME: should add config to disable new account creation
+        # This could be abstracted?
+        #username = self.get_username(identity, extension_data)
+        #if not username:
+        #    # FIXME:
+        #    raise FIXME("No user found for identity")
 
-                # FIXME: combined_username
-                for provider in self.username_providers:
-                    username = provider.get_username(
-                        identifier, extension_data)
-                    if username:
-                        break
-                else:
-                    # XXX: punt?  maybe we should just fail
-                    username = identifier
+        #referer = self._get_referer(req)
+        #return self.user_login.login(req, username, referer)
 
-                user_data = {}
-                email = extension_data.get('email')
-                if email:
-                    user_data['email'] = email
-                fullname = extension_data.get('fullname')
-                if fullname:
-                    user_data['name'] = fullname
+        username = self.user_manager.get_username(identifier)
+        # XXX: update name/email if account already exists?
+        if username is None:
+            # FIXME: abstract this
+            # Create new session (or "account")
+            # FIXME: should add config to disable new account creation
 
-                # FIXME: uniquify the username, or handle UserExists exception
-                self.user_manager.create_user(username, identifier, user_data)
+            # FIXME: combined_username
+            for provider in self.username_providers:
+                username = provider.get_username(
+                    identifier, extension_data)
+                if username:
+                    break
+            else:
+                # XXX: punt?  maybe we should just fail
+                username = identifier
 
-            referer = self._get_referer(req)
-            self.user_login.login(req, username, referer)
+            user_data = {}
+            email = extension_data.get('email')
+            if email:
+                user_data['email'] = email
+            fullname = extension_data.get('fullname')
+            if fullname:
+                user_data['name'] = fullname
 
-        except LoginWarning, ex:
-            chrome.add_notice(req, ex)
-        except LoginError, ex:
-            chrome.add_warning(req, ex)
-        return self._login_form(req)
+            # FIXME: uniquify the username, or handle UserExists exception
+            self.user_manager.create_user(username, identifier, user_data)
+
+        referer = self._get_referer(req)
+        self.user_login.login(req, username, referer)
 
     def _do_logout(self, req):
         """Log the user out.
         """
         self.user_login.logout(req)
+
+    def _check_authorization(self, identifier):
+        # make sure to call all authorization providers to give each
+        # a chance to raise NotAuthorized
+        results = [ policy.authorize(identifier)
+                    for policy in self.authorization_policies ]
+        if not any(bool(result) is True for result in results):
+            # FIXME: better message
+            raise NotAuthorized(
+                    "No configured authorization policy matched")
 
     def _login_form(self, req):
         img_path = req.href.chrome('authopenid/images') + '/'
@@ -345,5 +348,8 @@ class AuthOpenIdPlugin(Component):
                           req.get_header('Referer')]:
             referer = sanitize_referer(candidate, req.base_url)
             if referer:
+                if referer.startswith(req.abs_href('openid')):
+                    # don't redirect back to any of our pages
+                    break
                 return referer
         return self.env.abs_href()
