@@ -10,3 +10,5 @@
 /TracAuthOpenId.egg-info/top_level.txt
 /.coverage
 /cover/
+/.tox/
+/*.egg/

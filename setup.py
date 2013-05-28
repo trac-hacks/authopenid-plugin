@@ -18,6 +18,15 @@ if sys.version_info[:2] < (2,6):
         'simplejson',
         ])
 
+tests_require = [
+    "mock >= 1.0"
+    ]
+
+if sys.version_info[:2] < (2,7):
+    tests_require.extend([
+        'unittest2',
+        ])
+
 setup(
     name=PACKAGE,
     version=VERSION,
@@ -64,4 +73,7 @@ setup(
         },
 
     install_requires=install_requires,
+
+    test_suite='authopenid.tests.collector',
+    tests_require=tests_require,
     )
