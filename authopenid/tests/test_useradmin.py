@@ -13,15 +13,16 @@ from trac.test import EnvironmentStub
 from trac.web.api import Request
 from trac.web.session import DetachedSession
 
+from authopenid.compat import modernize_env
 from authopenid.exceptions import UserExists
 
 class TestBase(unittest.TestCase):
     def setUp(self):
         self.env = EnvironmentStub()
-        assert self.env.dburi == 'sqlite::memory:'
+        #assert self.env.dburi == 'sqlite::memory:'
 
     def tearDown(self):
-        self.env.global_databasemanager.shutdown()
+        self.env.destroy_db()
 
     def get_user_manager(self):
         from authopenid.useradmin import UserManager
@@ -29,12 +30,12 @@ class TestBase(unittest.TestCase):
 
 class TestUserManager(TestBase):
     def user_exists(self, username):
-        with self.env.db_query as db:
-            (n,), = db("SELECT count(*) FROM session"
-                       " WHERE authenticated=%s and sid=%s",
-                       (1, username))
-            assert n <= 1
-            return n
+        env = modernize_env(self.env)
+        (n,), = env.db_query("SELECT count(*) FROM session"
+                             " WHERE authenticated=%s and sid=%s",
+                             (1, username))
+        assert n <= 1
+        return n
 
     def assert_user_exists(self, username):
         self.assertTrue(self.user_exists(username),

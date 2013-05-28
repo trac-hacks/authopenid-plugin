@@ -10,7 +10,7 @@ except ImportError:                     # pragma: no cover
     import pickle
 
 from trac.config import BoolOption
-from trac.core import Component, ExtensionPoint, implements, TracError
+from trac.core import ExtensionPoint, implements, TracError
 from trac.db.util import ConnectionWrapper
 from trac.env import IEnvironmentSetupParticipant
 
@@ -23,6 +23,7 @@ from openid import oidutil
 import openid.store.memstore
 import openid.store.sqlstore
 
+from authopenid.compat import Component, TransactionContextManager
 from authopenid.exceptions import (
     LoginError,
     AuthenticationFailed,
@@ -136,7 +137,7 @@ class openid_store(object):
 
         conn = self.db
         if conn is None:
-            tm = self.env.db_transaction
+            tm = TransactionContextManager(self.env)
             self._exit = tm.__exit__
             conn = tm.__enter__()
 

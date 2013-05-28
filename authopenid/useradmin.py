@@ -2,10 +2,11 @@
 '''
 from __future__ import absolute_import
 
-from trac.core import Component, implements
+from trac.core import implements
 from trac.web.auth import IAuthenticator, LoginModule
 from trac.web.session import DetachedSession
 
+from authopenid.compat import Component
 from authopenid.exceptions import IdentifierNotUnique, UserExists
 from authopenid.interfaces import IUserLogin
 from authopenid.util import sanitize_referer

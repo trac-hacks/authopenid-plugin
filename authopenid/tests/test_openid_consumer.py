@@ -16,6 +16,7 @@ from openid.consumer.discover import DiscoveryFailure
 
 from mock import ANY, call, Mock, patch, sentinel
 
+from authopenid.compat import modernize_env
 from authopenid.exceptions import (
     AuthenticationFailed,
     AuthenticationCancelled,
@@ -239,10 +240,11 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
 
     def setUp(self):
         self.env = EnvironmentStub()
-        assert self.env.dburi == 'sqlite::memory:'
+        #assert self.env.dburi == 'sqlite::memory:'
 
     def tearDown(self):
-        self.env.global_databasemanager.shutdown()
+        #self.env.global_databasemanager.shutdown()
+        self.env.destroy_db()
 
     def get_consumer(self):
         from authopenid.openid_consumer import OpenIDConsumer
@@ -263,8 +265,9 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
             self.assertNotIn(table, tables)
 
     def assert_schema_version_is(self, expected_version):
+        env = modernize_env(self.env)
         consumer = self.get_consumer()
-        system = dict(self.env.db_query("SELECT name, value FROM system"))
+        system = dict(env.db_query("SELECT name, value FROM system"))
         version = system.get(consumer.schema_version_key)
         version = int(version) if version is not None else None
         self.assertEquals(version, expected_version,
@@ -278,20 +281,22 @@ class TestOpenIDConsumerIntegration(unittest.TestCase):
         self.assert_schema_version_is(1)
 
     def test_environment_upgrade_from_scratch(self):
+        env = modernize_env(self.env)
         consumer = self.get_consumer()
-        with self.env.db_query as db:
+        with env.db_query as db:
             self.assertTrue(consumer.environment_needs_upgrade(db))
-        with self.env.db_transaction as db:
+        with env.db_transaction as db:
             consumer.upgrade_environment(db)
-        with self.env.db_query as db:
+        with env.db_query as db:
             self.assertFalse(consumer.environment_needs_upgrade(db))
         self.assertOIDTablesExist()
         self.assert_schema_version_is(1)
 
     def test_environment_upgrade_from_legacy(self):
         # Fake legacy install: have tables, but no entry in system table
+        env = modernize_env(self.env)
         consumer = self.get_consumer()
-        with self.env.db_transaction as db:
+        with env.db_transaction as db:
             consumer.upgrade_environment(db)
             db("DELETE FROM system WHERE name=%s",
                (consumer.schema_version_key,))

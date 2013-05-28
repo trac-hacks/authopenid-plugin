@@ -1,10 +1,13 @@
 """
 """
+from __future__ import absolute_import
 
 from urlparse import urljoin, urlparse, urlunparse
 
 from trac.core import TracError
 from trac.db.api import DatabaseManager
+
+from authopenid.compat import TransactionContextManager
 
 def sanitize_referer(referer, base_url):
     """ Ensure that ``referer`` is 'under' ``base_url``.
@@ -77,7 +80,8 @@ def list_tables(env):
     except KeyError:
         raise TracError("Unsupported database scheme '%s'" % scheme)
 
-    return set(row[0] for row in env.db_query(sql))
+    with TransactionContextManager(env) as db:
+        return set(row[0] for row in db(sql))
 
 def table_exists(env, tablename):
     return tablename in list_tables(env)
