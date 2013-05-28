@@ -296,26 +296,32 @@ class OpenIDConsumer(Component):
         return have < want
 
     def upgrade_environment(self, db):
-        version = self._get_schema_version()
-        with openid_store(self.env, db) as store:
-            current = 1 if hasattr(store, 'createTables') else 0
-        assert version in (0, None) and version != current
+        version = orig = self._get_schema_version()
+        if version is None:
+            # create initial system table entry
+            version = 0
+            db("INSERT INTO system (name, value) VALUES (%s, %s)",
+               (self.schema_version_key, str(version)))
+            # XXX: store.createTables() starts be issuing a rollback
+            db.commit()
+        assert 0 <= version < 2
 
-        # Be careful: if have == None, we may still have the tables
+        # Be careful: if version was None, we may still have the tables
         # left from before we started recording schema version in the
         # system table.
-        if current == 1 and not table_exists(self.env, 'oid_associations'):
-            with openid_store(self.env, db) as store:
-                store.createTables()
+        #
+        if version < 1:
+            if not table_exists(self.env, 'oid_associations'):
+                with openid_store(self.env, db) as store:
+                    if hasattr(store, 'createTables'):
+                        store.createTables()
+            version = 1
 
-        if version is None:
-            sql = "INSERT INTO system (value, name) VALUES (%s, %s)"
-        else:
-            sql = "UPDATE system SET value=%s WHERE name=%s"
-        db(sql, (str(current), self.schema_version_key))
+        db("UPDATE system SET value=%s WHERE name=%s",
+           (str(version), self.schema_version_key))
 
         self.log.info("Upgraded openid store schema from %r to %d"
-                      % (version, current))
+                      % (orig, version))
 
     def _get_schema_version(self):
         rows = self.env.db_query(" SELECT value FROM system WHERE name=%s",
