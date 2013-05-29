@@ -1,6 +1,7 @@
 from setuptools import setup
 import os
 import sys
+import warnings
 
 PACKAGE = 'TracAuthOpenId'
 VERSION = '0.4.3'
@@ -26,6 +27,15 @@ if sys.version_info[:2] < (2,7):
     tests_require.extend([
         'unittest2',
         ])
+
+    # Get rid of annoying warning which results from running
+    #
+    #     python -Wd setup.py test
+    #
+    # with unittest2 under py2.6
+    warnings.filterwarnings(
+        'ignore', r'Use of a TestResult without an addSkip method',
+        DeprecationWarning)
 
 setup(
     name=PACKAGE,
