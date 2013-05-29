@@ -8,6 +8,7 @@ else:
     import unittest2 as unittest
 
 from trac.test import EnvironmentStub
+from trac.web.api import RequestDone
 from trac.web.href import Href
 
 from openid import oidutil
@@ -165,7 +166,8 @@ class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
 
         consumer = self.get_consumer()
         req = self.get_request()
-        consumer.begin(req, 'http://example.net', 'http://example.com/')
+        with self.assertRaises(RequestDone):
+            consumer.begin(req, 'http://example.net', 'http://example.com/')
 
         form_html = auth_request.htmlMarkup.return_value
         self.assertIn(call.send(form_html, "text/html"), req.mock_calls)
@@ -175,7 +177,8 @@ class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
         provider = Mock(name='provider')
         self.extension_providers.append(provider)
 
-        self.consumer_begin()
+        with self.assertRaises(RequestDone):
+            self.consumer_begin()
         self.assertEqual(provider.mock_calls, [
             call.add_to_auth_request(ANY, self.auth_request)])
 

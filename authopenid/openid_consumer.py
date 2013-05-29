@@ -13,6 +13,7 @@ from trac.config import BoolOption, OrderedExtensionsOption
 from trac.core import implements, TracError
 from trac.db.util import ConnectionWrapper
 from trac.env import IEnvironmentSetupParticipant
+from trac.web.api import RequestDone
 
 import openid.consumer.consumer
 from openid.consumer.consumer import SUCCESS, FAILURE, CANCEL, SETUP_NEEDED
@@ -212,6 +213,7 @@ class OpenIDConsumer(Component):
                     form_html = auth_request.htmlMarkup(
                         trust_root, return_to, immediate=immediate)
                     req.send(form_html, 'text/html')
+                raise RequestDone
 
     def complete(self, req, current_url=None):
         if current_url is None:
