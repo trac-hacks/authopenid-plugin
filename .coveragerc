@@ -4,4 +4,4 @@ branch = True
 include = authopenid/*
 omit =
     .tox/*
-    */test_*
+    */tests/*

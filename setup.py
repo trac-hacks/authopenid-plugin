@@ -20,7 +20,8 @@ if sys.version_info[:2] < (2,6):
         ])
 
 tests_require = [
-    "mock >= 1.0"
+    "mock >= 1.0",
+    "WebTest",
     ]
 
 if sys.version_info[:2] < (2,7):
@@ -88,6 +89,6 @@ setup(
 
     install_requires=install_requires,
 
-    test_suite='authopenid.tests.collector',
+    test_suite='authopenid.tests.suite',
     tests_require=tests_require,
     )
