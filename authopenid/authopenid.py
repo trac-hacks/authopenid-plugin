@@ -37,6 +37,7 @@ from authopenid.api import (
     NegativeAssertion,
     NotAuthorized,
     IOpenIDAuthorizationPolicy,
+    IOpenIDIdentifierStore,
     )
 from authopenid.interfaces import (
     IOpenIDConsumer,
@@ -133,10 +134,16 @@ class AuthOpenIdPlugin(Component):
     authorization_policies = OrderedExtensionsOption(
         'openid', 'authorization_policies', IOpenIDAuthorizationPolicy)
 
+    identifier_store = ExtensionOption(
+        'openid', 'identifier_store', IOpenIDIdentifierStore,
+        default='OpenIDIdentifierStore')
+
     user_login = ExtensionOption(
         'openid', 'user_login_provider', IUserLogin, default='UserLogin')
+
     openid_consumer = ExtensionOption(
-        'openid', 'openid_consumer', IOpenIDConsumer, default='OpenIDConsumer')
+        'openid', 'openid_consumer', IOpenIDConsumer,
+        default='OpenIDConsumer')
 
     def __init__(self):
         config = self.config
@@ -271,7 +278,7 @@ class AuthOpenIdPlugin(Component):
         #referer = self._get_referer(req)
         #return self.user_login.login(req, username, referer)
 
-        username = self.user_manager.get_username(identifier)
+        username = self.identifier_store.get_user(identifier)
         # XXX: update name/email if account already exists?
         if username is None:
             # FIXME: abstract this

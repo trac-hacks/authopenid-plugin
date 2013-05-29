@@ -216,3 +216,48 @@ class IOpenIDAuthorizationPolicy(Interface):
         :raises: :exc:`NotAuthorized` if the user is not authorized
 
         """
+
+
+class UserNotFound(KeyError):
+    pass
+
+class OpenIDIdentifierInUse(OpenIDException, KeyError):
+    def __init__(self, username, identifier):
+        msg = tag("User ", tag.code(username),
+                  " is already using identifier ", tag.code(identifier))
+        super(OpenIDIdentifierInUse, self).__init__(msg, username, identifier)
+
+    @property
+    def username(self):
+        return self.args[1]
+
+    @property
+    def identifier(self):
+        return self.args[2]
+
+class IOpenIDIdentifierStore(Interface):
+    """ Manage the association between trac users and OpenID identifiers
+    """
+    def get_user(openid_identifier):
+        """ Get trac username by OpenID identifier
+
+        :returns: Trac username or ``None`` if no user found
+        """
+
+    def get_identifiers(username):
+        """ Get OpenID identifiers for user
+        """
+
+    def add_identifier(username, openid_identifier):
+        """ Add an OpenID identifier for the user
+
+        :raises: :exc:`UserNotFound` if no user is found for ``username``
+        :raises: :exc:`OpenIDIdentifierInUse` if another user is already
+            associated with the ``openid_identifier``
+        """
+
+    def discard_identifier(username, openid_identifier):
+        """ Remove an OpenID identifier for the user
+
+        :raises: :exc:`UserNotFound` if no user is found for ``username``
+        """
