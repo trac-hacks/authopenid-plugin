@@ -43,7 +43,7 @@ def sanitize_referer(referer, base_url):
                        None, None, None))
 
 def split_path_info(path):
-    assert path.startswith('/')
+    assert path == '' or path.startswith('/')
     clean = []
     for segment in path.split('/'):
         if segment and segment != '.':
