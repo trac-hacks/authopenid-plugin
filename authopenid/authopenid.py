@@ -26,7 +26,6 @@ from trac.config import (
 from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.main import IRequestHandler
-from trac.web.auth import LoginModule
 
 from genshi.builder import tag
 from genshi.core import Markup
@@ -50,15 +49,6 @@ _DISCONTINUED_OPTIONS = [
     ('openid', 'lowercase_authname'),
     ('openid', 'timeout'),
     ]
-
-## List of components which might provide a 'Logout' navagation link
-_LOGIN_MODULES = [LoginModule]
-try:
-    from acct_mgr.web_ui import LoginModule as acct_mgr_LoginModule
-    _LOGIN_MODULES.append(acct_mgr_LoginModule)
-except ImportError:
-    pass
-
 
 class AuthOpenIdPlugin(Component):
     implements(INavigationContributor, ITemplateProvider, IRequestHandler)
@@ -164,13 +154,6 @@ class AuthOpenIdPlugin(Component):
             login_url = req.href.openid('login', referer=self_url)
             yield ('metanav', 'openid/login',
                    tag.a('OpenID Login', href=login_url))
-        elif not any(self.env.is_component_enabled(comp)
-                     for comp in _LOGIN_MODULES):
-            # FIXME: Add config to show name rather than sid (b/c)
-            yield ('metanav', 'openid/login', 'logged in as %s' % req.authname)
-
-            yield ('metanav', 'openid/logout',
-                   tag.a('Logout', href=req.href.openid('logout')))
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -181,14 +164,9 @@ class AuthOpenIdPlugin(Component):
 
     # IRequestHandler methods
     def match_request(self, req):
-        return req.path_info in (
-            '/openid/login', '/openid/logout', '/openid/response')
+        return req.path_info in ('/openid/login', '/openid/response')
 
     def process_request(self, req):
-        # FIXME: move this to LoginModule?
-        if req.path_info == '/openid/logout':
-            return self._do_logout(req)
-
         if req.authname != 'anonymous':
             chrome.add_warning(req, "Already logged in")
             return req.redirect(self._get_referer(req))
@@ -265,11 +243,6 @@ class AuthOpenIdPlugin(Component):
         referer = self._get_referer(req)
         self.user_login.login(req, username, referer)
 
-
-    def _do_logout(self, req):
-        """Log the user out.
-        """
-        self.user_login.logout(req)
 
     def _check_authorization(self, identifier):
         # make sure to call all authorization providers to give each
