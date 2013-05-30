@@ -5,15 +5,18 @@ if not hasattr(defaultTestLoader, 'discover'): # pragma: no cover
     from unittest2 import defaultTestLoader
 
 def suite():                            # pragma: no cover
-    suite = unit_tests()
-    suite.addTests(functional_tests())
+    """ The complete suite of tests.
+
+    This does not include meta-tests (tests for tests).
+    """
+    from authopenid.tests import functional
+    suite = quick()
+    suite.addTests(functional.suite())
     return suite
 
-def unit_tests():                       # pragma: no cover
-    return defaultTestLoader.discover('authopenid.tests')
+def quick():                            # pragma: no cover
+    """ The non-slow tests
 
-def functional_tests():                 # pragma: no cover
-    return defaultTestLoader.discover('authopenid.tests', 'functional.py')
-
-def compat_tests():                     # pragma: no cover
-    return defaultTestLoader.discover('authopenid.tests.compat')
+    Everything but the functional tests.
+    """
+    return defaultTestLoader.discover('authopenid')

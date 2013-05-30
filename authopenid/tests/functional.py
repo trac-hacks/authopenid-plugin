@@ -122,42 +122,39 @@ class FunctionalTests(unittest.TestCase):
         self.assertFalse(resp.html('a', href=re.compile(r'/logout\b')),
                          "Not logged out (logout link found)")
 
-    @print_log_on_failure
-    def test_homepage(self):
-        homepage = self.app.get('/')
-        self.assertEqual(homepage.status_int, 200)
-        self.assertRegexpMatches(homepage.normal_body,
-                                 r'Welcome to Trac\b.*Enjoy!')
-        self.assert_logged_out(homepage)
+    def assert_chrome_message(self, resp, text=None, type_=None):
+        if text is None:
+            text = re.compile('.')
+        elif not hasattr(text, 'search'):
+            text = re.compile(text or '.')
+
+        for message in resp.html('div', 'system-message'):
+            if type_ is None \
+                   or type_ in message['class'] \
+                   or message['id'] == type_:
+                if text.search(''.join(message.strings)):
+                    return
+        self.fail("No chrome %s matching %r"
+                  % (type_ or 'message', text.pattern))
+
+    def assert_notice(self, resp, text=None):
+        self.assert_chrome_message(resp, text, 'notice')
+
+    def assert_warning(self, resp, text=None):
+        self.assert_chrome_message(resp, text, 'warning')
+
+    def submit_login_form(self, openid_identifier):
+        resp = self.app.get('/openid/login')
+        self.assertEqual(resp.status_int, 200)
+
+        for form in set(resp.forms.values()):
+            if 'openid_identifier' in form.fields:
+                form['openid_identifier'] = openid_identifier
+                return form.submit()
+        self.fail("Can not find login form")
 
     def do_login(self, openid_identifier):
-        login = self.app.get('/openid/login')
-        self.assertEqual(login.status_int, 200)
-
-        form = next(f for f in login.forms.values()
-                    if 'openid_identifier' in f.fields)
-        form['openid_identifier'] = openid_identifier
-        return form.submit()
-
-    @print_log_on_failure
-    def test_login_empty_identifier(self):
-        resp = self.do_login('')
-        self.assertEqual(resp.status_int, 200)
-        self.assertRegexpMatches(resp.text, r'(?i)Enter an OpenID Identifier')
-        self.assert_logged_out(resp)
-
-    @print_log_on_failure
-    def test_discovery_failure(self):
-        resp = self.do_login('http://does.not.exist/')
-        self.assertEqual(resp.status_int, 200)
-        self.assertIn('Error fetching XRDS document', resp.normal_body)
-        self.assertTrue(resp.html.find('input', {'name':'openid_identifier'}))
-        self.assert_logged_out(resp)
-
-    @print_log_on_failure
-    def test_login_logout(self):
-        identifier = self.op.get_identifier('someuser')
-        resp = self.do_login(identifier)
+        resp = self.submit_login_form(openid_identifier)
         self.assertEqual(resp.status_int, 200)
         self.assertEqual(resp.form.action, self.op.op_endpoint)
         self.assertEqual(resp.form.method, 'post')
@@ -167,17 +164,56 @@ class FunctionalTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 302)
         location = resp.headers['location']
         self.assertEqual(urlparse(location).path, '/openid/response')
-        resp = self.app.get(location).maybe_follow()
 
-        # Check that we're logged in
+        # Process the indirect response
+        return self.app.get(location).maybe_follow()
+
+
+    @print_log_on_failure
+    def test_homepage(self):
+        homepage = self.app.get('/')
+        self.assertEqual(homepage.status_int, 200)
+        self.assertRegexpMatches(homepage.normal_body,
+                                 r'Welcome to Trac\b.*Enjoy!')
+        self.assert_logged_out(homepage)
+
+    @print_log_on_failure
+    def test_login_empty_identifier(self):
+        resp = self.submit_login_form('')
+        self.assertEqual(resp.status_int, 200)
+        self.assertRegexpMatches(resp.text, r'(?i)Enter an OpenID Identifier')
+        self.assert_logged_out(resp)
+
+    @print_log_on_failure
+    def test_discovery_failure(self):
+        resp = self.submit_login_form('http://does.not.exist/')
+        self.assertEqual(resp.status_int, 200)
+        self.assertIn('Error fetching XRDS document', resp.normal_body)
+        self.assertTrue(resp.html.find('input', {'name':'openid_identifier'}))
+        self.assert_logged_out(resp)
+
+    @print_log_on_failure
+    def test_login_cancelled(self):
+        identifier = self.op.get_identifier('cancelled')
+        resp = self.do_login(identifier)
+        self.assert_logged_out(resp)
+        self.assert_warning(resp, r'Cancelled')
+
+    @print_log_on_failure
+    def test_login_logout(self):
+        identifier = self.op.get_identifier('someuser')
+        resp = self.do_login(identifier)
         self.assert_logged_in(resp)
-        # Check for the chrome notice
-        message = resp.html.find('div', {'class': 'system-message'})
-        self.assertRegexpMatches(str(message),
-                                 r'Your new username is .*\bsomeuser\b')
+        self.assert_notice(resp, r'Your new username is .*\bsomeuser\b')
 
-        # Log out
         resp = resp.click(href='/logout').maybe_follow()
+        self.assert_logged_out(resp)
+
+    @print_log_on_failure
+    @unittest.expectedFailure
+    def test_login_unauthorized(self):
+        identifier = self.op.get_identifier('unauthorized')
+        resp = self.do_login(identifier)
         self.assert_logged_out(resp)
 
 def make_wsgi_app(trac_env):
@@ -295,7 +331,10 @@ class TestOpenIDServer(object):
             assert id_path.startswith('/')
             username = id_path[1:]
         else:
-            return request.anser(False) # not authenticated
+            username = None
+
+        if username in ('cancelled', None):
+            return request.answer(False) # not authenticated
 
         response = request.answer(True)
         ax_req = ax.FetchRequest.fromOpenIDRequest(request)
@@ -346,6 +385,9 @@ class TestOpenIDServer(object):
                               content_type='application/xrds+xml',
                               charset='utf-8')
 
+def suite():
+    loader = unittest.defaultTestLoader
+    return loader.loadTestsFromTestCase(FunctionalTests)
 
 if __name__ == '__main__':
     unittest.main()
