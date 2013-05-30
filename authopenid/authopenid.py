@@ -38,6 +38,7 @@ from authopenid.api import (
     NotAuthorized,
     IOpenIDAuthorizationPolicy,
     IOpenIDIdentifierStore,
+    IOpenIDUserRegistration,
     )
 from authopenid.interfaces import (
     IOpenIDConsumer,
@@ -77,21 +78,6 @@ class AuthOpenIdPlugin(Component):
 
     strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
             """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
-
-    combined_username = BoolOption('openid', 'combined_username', False,
-            """ Username will be written as username_in_remote_system <openid_url>. """)
-
-    use_nickname_as_authname = BoolOption('openid', 'use_nickname_as_authname', False,
-            """ Whether the nickname as retrieved by SReg is used as username""")
-
-    trust_authname = BoolOption('openid', 'trust_authname', False,
-            """WARNING: Only enable this if you know what this mean!
-            This could make identity theft very easy if you do not control the OpenID provider!
-            Enabling this option makes the retrieved authname from the
-            OpenID provider authorative, i.e. it trusts the authname
-            to be the unique username of the user. Enabling this disables
-            the collission checking, so two different OpenID urls may
-            suddenly get the same username if they have the same authname""")
 
     signup_link = Option('openid', 'signup', 'http://openid.net/get/',
             """Signup link""")
@@ -138,6 +124,10 @@ class AuthOpenIdPlugin(Component):
         'openid', 'identifier_store', IOpenIDIdentifierStore,
         default='OpenIDIdentifierStore')
 
+    registration_module = ExtensionOption(
+        'openid', 'registration_module', IOpenIDUserRegistration,
+        default='OpenIDLegacyRegistrationModule')
+
     user_login = ExtensionOption(
         'openid', 'user_login_provider', IUserLogin, default='UserLogin')
 
@@ -173,23 +163,21 @@ class AuthOpenIdPlugin(Component):
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
-        return 'openidlogin'
+        return 'openid/login'
 
     def get_navigation_items(self, req):
         if not req.authname or req.authname == 'anonymous':
             self_url = req.href(req.path_info)
-            # XXX: add req.query_string?
-            login_url = req.href.openidlogin(referer=self_url)
-            yield ('metanav', 'openidlogin',
+            login_url = req.href.openid('login', referer=self_url)
+            yield ('metanav', 'openid/login',
                    tag.a('OpenID Login', href=login_url))
         elif not any(self.env.is_component_enabled(comp)
                      for comp in _LOGIN_MODULES):
-            # FIXME: back to username/SID
-            yield ('metanav', 'openidlogin',
-                   'logged in as %s' % (req.session.get('name')
-                                        or req.authname))
-            yield ('metanav', 'openidlogout',
-                   tag.a('Logout', href=req.href.openidlogout()))
+            # FIXME: Add config to show name rather than sid (b/c)
+            yield ('metanav', 'openid/login', 'logged in as %s' % req.authname)
+
+            yield ('metanav', 'openid/logout',
+                   tag.a('Logout', href=req.href.openid('logout')))
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -200,50 +188,44 @@ class AuthOpenIdPlugin(Component):
 
     # IRequestHandler methods
     def match_request(self, req):
-        # FIXME:
-        return re.match('/(openidlogin|openidverify|openidprocess|openidlogout)\??.*', req.path_info)
+        return req.path_info in (
+            '/openid/login', '/openid/logout', '/openid/response')
 
     def process_request(self, req):
-        # FIXME: why not req.path_info == '/openidlogin' ?
-        if req.path_info.startswith('/openidlogout'):
+        # FIXME: move this to LoginModule?
+        if req.path_info == '/openid/logout':
             return self._do_logout(req)
 
         if req.authname != 'anonymous':
             chrome.add_warning(req, "Already logged in")
             return req.redirect(self._get_referer(req))
 
-        if req.path_info.startswith('/openidlogin'):
+        if req.path_info == '/openid/login':
             return self._do_login(req)
-        elif req.path_info.startswith('/openidverify'):
-            return self._do_verify(req)
-        elif req.path_info.startswith('/openidprocess'):
+        elif req.path_info == '/openid/response':
             return self._do_process(req)
 
     def _do_login(self, req):
 
         assert req.authname == 'anonymous'
 
-        self._save_referer(req)
+        if req.args.get('referer'):
+            self._save_referer(req)
 
-        if self.default_openid:
-            req.args['openid_identifier'] = self.default_openid
-            return self._do_verify(req)
-
-        return self._login_form(req)
-
-    def _do_verify(self, req):
-        """Process the form submission, initating OpenID verification.
-        """
-        assert req.authname == 'anonymous'
-
-        openid_identifier = req.args.get('openid_identifier')
-        immediate = 'immediate' in req.args # FIXME: used?
+        if req.method == 'POST':
+            openid_identifier = req.args.get('openid_identifier')
+            immediate = 'immediate' in req.args # FIXME: used?
+        elif self.default_openid:
+            openid_identifier = self.default_openid
+            immediate = False
+        else:
+            return self._login_form(req)
 
         if not openid_identifier:
             chrome.add_warning(req, "Enter an OpenID Identifier")
             return self._login_form(req)
 
-        return_to = req.abs_href('openidprocess')
+        return_to = req.abs_href.openid('response')
 
         try:
             return self.openid_consumer.begin(
@@ -251,6 +233,7 @@ class AuthOpenIdPlugin(Component):
         except DiscoveryFailure as exc:
             chrome.add_warning(req, Markup(exc))
             return self._login_form(req)
+
 
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
@@ -263,6 +246,7 @@ class AuthOpenIdPlugin(Component):
             chrome.add_warning(req, Markup(exc))
             return self._login_form(req)
 
+        # FIXME: should authz checks be performed only for new accounts?
         try:
             self._check_authorization(identifier)
         except NotAuthorized as exc:
@@ -280,34 +264,14 @@ class AuthOpenIdPlugin(Component):
 
         username = self.identifier_store.get_user(identifier)
         # XXX: update name/email if account already exists?
+
         if username is None:
-            # FIXME: abstract this
-            # Create new session (or "account")
-            # FIXME: should add config to disable new account creation
+            return self.registration_module.register_user(req, identifier)
 
-            # FIXME: combined_username
-            for provider in self.username_providers:
-                username = provider.get_username(
-                    identifier, extension_data)
-                if username:
-                    break
-            else:
-                # XXX: punt?  maybe we should just fail
-                username = identifier
-
-            user_data = {}
-            email = extension_data.get('email')
-            if email:
-                user_data['email'] = email
-            fullname = extension_data.get('fullname')
-            if fullname:
-                user_data['name'] = fullname
-
-            # FIXME: uniquify the username, or handle UserExists exception
-            self.user_manager.create_user(username, identifier, user_data)
-
+        # Complete the user logLog the user in
         referer = self._get_referer(req)
         self.user_login.login(req, username, referer)
+
 
     def _do_logout(self, req):
         """Log the user out.
@@ -330,17 +294,13 @@ class AuthOpenIdPlugin(Component):
         chrome.add_stylesheet(req, 'authopenid/css/openid.css')
         chrome.add_script(req, 'authopenid/js/openid-jquery.js')
         data = dict(self.template_data,
-                    action=req.href('openidverify'),
+                    action=req.href.openid('login'),
                     images=img_path)
 
         return 'openidlogin.html', data, None
 
+    # FIXME: needs work
     def _save_referer(self, req):
-        # XXX: It would make me more comfortable if we checked the
-        # referer to make sure it was safe, but that's a pain.  The
-        # only place we use the referer is to feed it to the stock
-        # LoginModule.  We'll rely on it to do the sanity checking for
-        # now.
         for candidate in (req.args.get('referer'), req.get_header('Referer')):
             referer = sanitize_referer(candidate, req.base_url)
             if referer:

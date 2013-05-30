@@ -261,3 +261,16 @@ class IOpenIDIdentifierStore(Interface):
 
         :raises: :exc:`UserNotFound` if no user is found for ``username``
         """
+
+class IOpenIDUserRegistration(Interface):
+    """ Creates new user accounts for OpenID authenticated users.
+
+    Depending on configuration, this may or may not involve further
+    user interaction.
+
+    """
+    def register_user(req, openid_identifier):
+        """ Register a new OpenID-authenticated user.
+
+        :raises: :exc:`RequestDone` This is a no-return method.
+        """

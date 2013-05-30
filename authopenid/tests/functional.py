@@ -79,10 +79,10 @@ class FunctionalTests(unittest.TestCase):
         self.assertEqual(homepage.status_int, 200)
         self.assertRegexpMatches(homepage.normal_body,
                                  r'Welcome to Trac\b.*Enjoy!')
-        self.assertTrue(homepage.html('a', href=re.compile(r'\A/openidlogin')))
+        self.assertTrue(homepage.html('a', href=re.compile(r'\A/openid/login')))
 
     def do_login(self, openid_identifier):
-        login = self.app.get('/openidlogin')
+        login = self.app.get('/openid/login')
         self.assertEqual(login.status_int, 200)
 
         form = next(f for f in login.forms.values()

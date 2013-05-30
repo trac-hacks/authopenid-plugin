@@ -118,6 +118,7 @@ class OpenIDIdentifierStore(Component):
             raise UserNotFound("No such user: %r", username)
         return ds
 
+    # FIXME: unify with the same method in OpenIDLegacyRegistrationModule
     def _maybe_lowercase_username(self, username):
         if self.config.getbool('trac', 'ignore_auth_case'):
             return username.lower()
