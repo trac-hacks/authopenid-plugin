@@ -4,7 +4,7 @@ import sys
 import warnings
 
 PACKAGE = 'TracAuthOpenId'
-VERSION = '0.4.3'
+VERSION = '1.0a1'
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
@@ -52,7 +52,8 @@ setup(
         "Framework :: Trac",
         "Intended Audience :: System Administrators",
         "Topic :: Internet :: WWW/HTTP",
-        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 2.6",
+        "Programming Language :: Python :: 2.7",
         "License :: OSI Approved :: BSD License",
         ],
     keywords='trac openid',

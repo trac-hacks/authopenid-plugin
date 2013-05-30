@@ -2,13 +2,10 @@
 OpenID Authentication Plugin
 ============================
 
-.. CAUTION:: This branch (rewrite_) is currently under heavy
-   refactorization.  I do not advise using it in production.  (For
-   that, please continue to use the 0.4.x releases from PyPI_, or the
-   master_ branch from git.)
-
-   Currently it should run under trac 1.0 or 1.1; I plan to eventually make
-   it run under 0.12 as well.
+.. CAUTION:: This development branch (rewrite_) is currently under
+   heavy refactorization.  I do not advise using it in production.
+   (For that, please continue to use the 0.4.x releases from PyPI_, or
+   the master_ branch from git.)
 
    Comments, suggestions and bug reports are welcome.
 
@@ -19,14 +16,30 @@ OpenID Authentication Plugin
 Description
 ===========
 
-This plugin allows to login to Trac using OpenID.  I use it with Trac 0.12.
-It was developed under Trac 0.11, so it should work there too.
-Version 0.4 of this plugin runs under trac 1.0 (formerly 0.13), but
-this configuration has not yet been extensively tested or used in
-production.
+This plugin allows authentication to Trac using OpenID.
+
+Requirements
+============
+
+The intended target for the development version is
+
+- Trac >= 0.12
+- Python 2.6 or 2.7 (Python-openid_ does not support py3k — we won’t
+  until they do.)
+
+(The primary development has been under python 2.6 and trac 1.0.)
+
+.. _python-openid: https://pypi.python.org/pypi/python-openid/
+
+The stable version runs under Trac 0.12 or 0.11 and (since version
+0.4) under trac 1.0 (formerly 0.13.)
 
 Download & Source
 =================
+
+.. NOTE:: These installation instructions are for the stable branch of
+   the plugin.  The development branch is currently only available
+   from git.
 
 The source repository is on github__.
 You may submit bug reports and pull requests there.
