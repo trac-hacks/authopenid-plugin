@@ -93,8 +93,16 @@ class OpenIDLegacyRegistrationModule(Component):
                 user = DetachedSession(self.env, username)
                 if not user._new:
                     continue            # user exists
+
                 user.update(self._get_user_attributes(openid_identifier))
-                user.save()
+                if len(user) > 0:
+                    user.save()
+                else:
+                    # user.save won't create a new user with no data
+                    db("INSERT INTO session"
+                       " (sid, authenticated, last_visit)"
+                       " VALUES (%s, 1, 0)", (username,))
+
                 self.identifier_store.add_identifier(username,
                                                      openid_identifier)
                 break
@@ -126,7 +134,7 @@ class OpenIDLegacyRegistrationModule(Component):
         #     - also consider any static lists of potential usernames
         # FIXME: make this more lenient/configurable (is unicode allowed?)
         return (
-            re.match(r'\A\w[-\w\d@\. ()]+(?!< )\Z', username)
+            re.match(r'\A(?!\s)[-=\w\d@\. ()]+(?!<\s)\Z', username)
             and not username.isupper()
             and username.lower() not in ('anonymous', 'authenticated')
             )

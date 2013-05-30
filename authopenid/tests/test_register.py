@@ -64,6 +64,15 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
         ds = DetachedSession(self.env, 'joseph')
         self.assertEqual(ds['name'], 'joseph')
 
+    def test_register_user_with_no_data(self):
+        identifier = ident('=joe')
+        reg = self.get_registration_module()
+        with self.assertRaises(Redirected):
+            reg.register_user(self.req, identifier)
+
+        ds = DetachedSession(self.env, '=joe')
+        self.assertFalse(ds._new)
+
     def test_register_user_uniquifies_name(self):
         self.create_user('Joseph', '=not*joe')
         identifier = ident('=joe', {FULL_NAME: 'Joseph'})
