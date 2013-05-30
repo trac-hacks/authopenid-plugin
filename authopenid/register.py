@@ -53,12 +53,6 @@ class OpenIDLegacyRegistrationModule(Component):
         authname""")
 
 
-    def __init__(self):
-        authopenid = AuthOpenIdPlugin(self.env)
-        # FIXME: should probably do these later
-        self.identifier_store = authopenid.identifier_store
-        self.user_login = authopenid.user_login
-
     # FIXME: should add config to disable new account creation
     # FIXME: trust_authname
     # FIXME: combined_username?
@@ -86,6 +80,7 @@ class OpenIDLegacyRegistrationModule(Component):
         """
 
         identifier_store = AuthOpenIdPlugin(self.env).identifier_store
+        user_login = AuthOpenIdPlugin(self.env).user_login
 
         username = None
         for username in self._valid_usernames(req, openid_identifier):
@@ -103,8 +98,7 @@ class OpenIDLegacyRegistrationModule(Component):
                        " (sid, authenticated, last_visit)"
                        " VALUES (%s, 1, 0)", (username,))
 
-                self.identifier_store.add_identifier(username,
-                                                     openid_identifier)
+                identifier_store.add_identifier(username, openid_identifier)
                 break
         else:
             # FIXME: cleanup
@@ -120,7 +114,7 @@ class OpenIDLegacyRegistrationModule(Component):
             "Your new username is ", tag.code(username), "."
             ))
         referer = None                  # FIXME:
-        self.user_login.login(req, username, referer)
+        user_login.login(req, username, referer)
 
     def _validate_username(self, req, username):
         # FIXME: ':' not being a valid character means identifier URLs
