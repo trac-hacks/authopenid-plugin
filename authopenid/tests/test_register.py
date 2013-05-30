@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-
-from StringIO import StringIO
-from urlparse import urlparse
 import sys
 if sys.version_info >= (2, 7):
     import unittest
@@ -11,16 +8,14 @@ else:
     import unittest2 as unittest
 
 from mock import Mock, patch
+import webob
 
 from trac.test import EnvironmentStub
 from trac.web.api import Request
 from trac.web.chrome import Chrome
 from trac.web.session import DetachedSession
 
-from authopenid.api import (
-    FULL_NAME,
-    OpenIDIdentifier,
-    )
+from authopenid.api import FULL_NAME, OpenIDIdentifier
 
 class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
     def setUp(self):
@@ -101,47 +96,17 @@ class Redirected(Exception):
     def url(self):
         return self.args[0]
 
-DEFAULT_ENVIRON = {
-    'REQUEST_METHOD': 'POST',
-    'SERVER_NAME': 'example.net',
-    #'SERVER_PORT': '80',
-    #'SCRIPT_NAME': '',
-    'PATH_INFO': '',
-    #'QUERY_STRING': '',
-    #'CONTENT_TYPE': '',
-    'SERVER_PROTOCOL': 'HTTP/1.1',
-    'wsgi.version': (1,0),
-    #'wsgi.url_scheme': 'http',
-    'wsgi.multithread': False,
-    'wsgi.multiprocess': False,
-    'wsgi.run_once': False,
-    }
-
 class MockRequest(Request):
-    def __init__(self, base_url='http://example.net/',
-                 authname='anonymous',
-                 **extra_env):
-        environ = dict(DEFAULT_ENVIRON)
-        environ.update({
-            'wsgi.input': StringIO(),
-            'wsgi.errors': StringIO(),
-            })
-        environ.update(extra_env)
-        if base_url:
-            base = urlparse(base_url)
-            if base.netloc:
-                environ['HTTP_HOST'] = base.netloc
-            environ['SERVER_PORT'] = base.port \
-                                     or (443 if base.scheme == 'https' else 80)
-            environ['wsgi.url_scheme'] = base.scheme or 'http'
-            environ['SCRIPT_NAME'] = base.path or ''
-
-        Request.__init__(self, environ, self.mock_start_response)
+    def __init__(self, base_url='http://example.net/', authname='anonymous'):
+        environ = webob.Request.blank(base_url).environ
+        start_response = Mock(name='start_response', spec=())
+        Request.__init__(self, environ, start_response)
         self.authname = authname
         self.locale = None
 
-    def mock_start_response(self, status, headers):
-        self.mock_response = status, headers
-
     def redirect(self, url, permanent=False):
         raise Redirected(url, permanent)
+
+    @property
+    def start_response(self):
+        return self._start_response

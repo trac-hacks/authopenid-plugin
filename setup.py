@@ -21,6 +21,7 @@ if sys.version_info[:2] < (2,6):
 
 tests_require = [
     "mock >= 1.0",
+    "WebOb",
     "WebTest",
     ]
 
