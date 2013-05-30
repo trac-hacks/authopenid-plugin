@@ -23,14 +23,14 @@ import openid.store.memstore
 import openid.store.sqlstore
 
 from authopenid.api import (
-    IOpenIDExtensionProvider,
-    OpenIDIdentifier,
     AuthenticationFailed,
     AuthenticationCancelled,
     SetupNeeded,
+    IOpenIDExtensionProvider,
+    OpenIDIdentifier,
+    IOpenIDConsumer,
     )
 from authopenid.compat import Component, TransactionContextManager
-from authopenid.interfaces import IOpenIDConsumer
 from authopenid.util import get_db_scheme, table_exists
 
 # XXX: It looks like python-openid is going to switch to using the

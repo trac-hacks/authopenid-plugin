@@ -38,8 +38,6 @@ from authopenid.api import (
     IOpenIDAuthorizationPolicy,
     IOpenIDIdentifierStore,
     IOpenIDUserRegistration,
-    )
-from authopenid.interfaces import (
     IOpenIDConsumer,
     IUserLogin,
     )

@@ -5,8 +5,8 @@ from __future__ import absolute_import
 from trac.core import implements
 from trac.web.auth import IAuthenticator, LoginModule
 
+from authopenid.api import IUserLogin
 from authopenid.compat import Component
-from authopenid.interfaces import IUserLogin
 from authopenid.util import sanitize_referer
 
 class UserLogin(Component):
