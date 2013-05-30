@@ -62,8 +62,6 @@ class AuthenticationCancelled(NegativeAssertion):
     user cancelled the OpenID authentication process.
 
     """
-    def __html__(self):
-        return Markup(str(self) or 'Authentication Cancelled')
 
 class SetupNeeded(NegativeAssertion):
     """ Immediate authentication failed.
