@@ -79,7 +79,7 @@ setup(
             # I don't think the entry point names matter.
             '%s = authopenid' % PACKAGE,
             'OpenIDConsumer = authopenid.openid_consumer',
-            'UserLogin = authopenid.useradmin',
+            'UserLogin = authopenid.userlogin',
             # FIXME:
             #'Something = authopenid.extension_providers',
             'Authorizers = authopenid.authorization',

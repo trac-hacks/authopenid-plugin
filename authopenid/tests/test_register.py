@@ -20,8 +20,6 @@ from trac.web.session import DetachedSession
 from authopenid.api import (
     FULL_NAME,
     OpenIDIdentifier,
-    OpenIDIdentifierInUse,
-    UserNotFound,
     )
 
 class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
@@ -29,7 +27,7 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
         self.env = EnvironmentStub(enable=[
             'trac.*',
             'authopenid.identifier_store.*',
-            'authopenid.useradmin.*',
+            'authopenid.userlogin.*',
             ])
         #assert self.env.dburi == 'sqlite::memory:'
         self.req = MockRequest()
@@ -41,7 +39,8 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
     def get_registration_module(self):
         from authopenid.register import OpenIDLegacyRegistrationModule
         from authopenid.authopenid import AuthOpenIdPlugin
-        import authopenid.identifier_store
+        # make sure the identifier store is available
+        import authopenid.identifier_store ; 'SIDE-EFFECTS'
 
         # prevent "No OpenID authorization_polices are configured" error
         # when instantiating AuthOpenIdPlugin

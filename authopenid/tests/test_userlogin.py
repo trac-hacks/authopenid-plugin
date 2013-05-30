@@ -13,77 +13,21 @@ from trac.test import EnvironmentStub
 from trac.web.api import Request
 from trac.web.session import DetachedSession
 
-from authopenid.compat import modernize_env
-from authopenid.exceptions import UserExists
-
-class TestBase(unittest.TestCase):
+class UserLoginIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.env = EnvironmentStub()
         #assert self.env.dburi == 'sqlite::memory:'
+        self.create_user('someone')
 
     def tearDown(self):
         self.env.destroy_db()
 
-    def get_user_manager(self):
-        from authopenid.useradmin import UserManager
-        return UserManager(self.env)
-
-class TestUserManager(TestBase):
-    def user_exists(self, username):
-        env = modernize_env(self.env)
-        (n,), = env.db_query("SELECT count(*) FROM session"
-                             " WHERE authenticated=%s and sid=%s",
-                             (1, username))
-        assert n <= 1
-        return n
-
-    def assert_user_exists(self, username):
-        self.assertTrue(self.user_exists(username),
-                        "user %r does not exists" % username)
-
-    def test_create_user(self):
-        m = self.get_user_manager()
-        m.create_user('JoeBloe')
-        self.assert_user_exists('JoeBloe')
-
-    def test_create_user_lowercases_username(self):
-        self.env.config.set('trac', 'ignore_auth_case', True)
-        m = self.get_user_manager()
-        m.create_user('JoeBloe')
-        self.assert_user_exists('joebloe')
-
-    def test_create_user_attributes(self):
-        m = self.get_user_manager()
-        data = {'foo': 'bar'}
-        m.create_user('JoeBlow', attributes=data)
-        session = DetachedSession(self.env, 'JoeBlow')
-        self.assertEqual(dict(session), data)
-
-    def test_create_raises_userexists(self):
-        m = self.get_user_manager()
-        m.create_user('Joe')
-        with self.assertRaises(UserExists):
-            m.create_user('Joe')
-        self.assert_user_exists('Joe')
-
-    def test_get_username_returns_none(self):
-        m = self.get_user_manager()
-        self.assertIs(m.get_username('identifier'), None)
-
-    def test_get_username(self):
-        m = self.get_user_manager()
-        identifier = 'abcdef'
-        m.create_user('Fred', openid_identifier=identifier)
-        self.assertEqual(m.get_username(identifier), 'Fred')
-
-
-class UserLoginIntegrationTests(TestBase):
-    def setUp(self):
-        super(UserLoginIntegrationTests, self).setUp()
-        self.get_user_manager().create_user('someone')
+    def create_user(self, username):
+        ds = DetachedSession(self.env, username)
+        ds.save()
 
     def get_user_login(self):
-        from authopenid.useradmin import UserLogin
+        from authopenid.userlogin import UserLogin
         return UserLogin(self.env)
 
     def test_login(self):

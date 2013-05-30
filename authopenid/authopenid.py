@@ -12,7 +12,6 @@
 from __future__ import absolute_import
 
 from pkg_resources import resource_filename
-import re
 
 from trac.core import Component, implements, TracError
 from trac.config import (
@@ -44,7 +43,6 @@ from authopenid.interfaces import (
     IOpenIDConsumer,
     IUserLogin,
     )
-from authopenid.useradmin import UserManager
 from authopenid.util import sanitize_referer
 
 ## Options we used to support but no longer do
@@ -154,9 +152,6 @@ class AuthOpenIdPlugin(Component):
             'custom_provider_image': self.custom_provider_image,
             'custom_provider_size': self.custom_provider_size,
             }
-
-        # FIXME: should be ExtensionOption?
-        self.user_manager = UserManager(self.env)
 
         if len(self.authorization_policies) == 0:
             raise TracError("No OpenID authorization_policies are configured")

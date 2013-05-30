@@ -9,7 +9,6 @@ from genshi.builder import tag
 from trac.core import implements
 from trac.config import BoolOption
 from trac.web import chrome
-from trac.web.api import RequestDone
 from trac.web.session import DetachedSession
 
 from authopenid.api import (
@@ -157,8 +156,7 @@ class OpenIDLegacyRegistrationModule(Component):
         # FIXME: configuration
 
         seen = set()
-        #for key in FULL_NAME, NICKNAME, EMAIL_ADDRESS:
-        for key in EMAIL_ADDRESS,:
+        for key in FULL_NAME, NICKNAME, EMAIL_ADDRESS:
             for value in openid_identifier.signed_data.getall(key):
                 value = value.strip()
                 if value and value not in seen:
