@@ -1,16 +1,19 @@
 from __future__ import absolute_import
 
-from StringIO import StringIO
 import sys
-from urlparse import urlparse
 
 if sys.version_info >= (2, 7):
     import unittest
 else:
     import unittest2 as unittest
 
+from mock import Mock
+import webob
+
 from trac.test import EnvironmentStub
 from trac.web.api import Request
+from trac.web.chrome import Chrome
+from trac.web import chrome
 from trac.web.session import DetachedSession
 
 class UserLoginIntegrationTests(unittest.TestCase):
@@ -24,15 +27,21 @@ class UserLoginIntegrationTests(unittest.TestCase):
 
     def create_user(self, username):
         ds = DetachedSession(self.env, username)
+        ds['name'] = 'someone'          # ds.save() wont save unless empty ds
         ds.save()
 
     def get_user_login(self):
         from authopenid.userlogin import UserLogin
         return UserLogin(self.env)
 
+    def make_request(self, **kwargs):
+        req = MockRequest(**kwargs)
+        Chrome(self.env).prepare_request(req)
+        return req
+
     def test_login(self):
         ul = self.get_user_login()
-        req = MockRequest()
+        req = self.make_request()
 
         with self.assertRaises(Redirected):
             ul.login(req, 'someone')
@@ -42,16 +51,37 @@ class UserLoginIntegrationTests(unittest.TestCase):
     def test_login_explicit_redirect(self):
         ul = self.get_user_login()
         base_url = 'http://example.com/trac'
-        req = MockRequest(base_url=base_url)
+        req = self.make_request(base_url=base_url)
 
         referer = base_url + '/subpage'
         with self.assertRaises(Redirected) as raised:
             ul.login(req, 'someone', referer)
         self.assertEqual(raised.exception.url, referer)
 
+    def test_login_saves_chrome_messages(self):
+        ul = self.get_user_login()
+        req = self.make_request()
+
+        chrome.add_warning(req, "a warning")
+        chrome.add_notice(req, "a notice")
+        self.assertEqual(len(req.chrome['warnings']), 1)
+        self.assertEqual(len(req.chrome['notices']), 1)
+
+        with self.assertRaises(Redirected):
+            ul.login(req, 'someone')
+
+        self.assertEqual(len(req.chrome['warnings']), 0)
+        self.assertEqual(len(req.chrome['notices']), 0)
+        ds = DetachedSession(self.env, 'someone')
+        self.assertEqual(dict(ds), {
+            'name': 'someone',
+            'chrome.warnings.0': 'a warning',
+            'chrome.notices.0': 'a notice',
+            })
+
     def test_logout(self):
         ul = self.get_user_login()
-        req = MockRequest(authname='someone')
+        req = self.make_request(authname='someone')
 
         with self.assertRaises(Redirected):
             ul.logout(req)
@@ -60,7 +90,7 @@ class UserLoginIntegrationTests(unittest.TestCase):
 
     def test_logout_anonymous(self):
         ul = self.get_user_login()
-        req = MockRequest()
+        req = self.make_request()
 
         with self.assertRaises(Redirected):
             ul.logout(req)
@@ -69,7 +99,7 @@ class UserLoginIntegrationTests(unittest.TestCase):
     def test_logout_explicit_redirect(self):
         ul = self.get_user_login()
         base_url = 'http://example.com/trac'
-        req = MockRequest(base_url=base_url, authname='x')
+        req = self.make_request(base_url=base_url, authname='x')
 
         referer = base_url + '/subpage'
         with self.assertRaises(Redirected) as raised:
@@ -78,14 +108,14 @@ class UserLoginIntegrationTests(unittest.TestCase):
 
     def test_authenticate(self):
         ul = self.get_user_login()
-        req = MockRequest()
+        req = self.make_request()
 
         self.assertIs(ul.authenticate(req), None)
 
         with self.assertRaises(Redirected):
             ul.login(req, 'someone')
 
-        req2 = MockRequest()
+        req2 = self.make_request()
         req2.incookie = req.outcookie
         self.assertEqual(ul.authenticate(req2), 'someone')
 
@@ -95,46 +125,24 @@ class Redirected(Exception):
         return self.args[0]
 
 
-DEFAULT_ENVIRON = {
-    'REQUEST_METHOD': 'POST',
-    'SERVER_NAME': 'example.net',
-    #'SERVER_PORT': '80',
-    #'SCRIPT_NAME': '',
-    'PATH_INFO': '',
-    #'QUERY_STRING': '',
-    #'CONTENT_TYPE': '',
-    'SERVER_PROTOCOL': 'HTTP/1.1',
-    'wsgi.version': (1,0),
-    #'wsgi.url_scheme': 'http',
-    'wsgi.multithread': False,
-    'wsgi.multiprocess': False,
-    'wsgi.run_once': False,
-    }
-
 class MockRequest(Request):
-    def __init__(self, base_url='http://example.net/',
-                 authname='anonymous',
-                 **extra_env):
-        environ = dict(DEFAULT_ENVIRON)
-        environ.update({
-            'wsgi.input': StringIO(),
-            'wsgi.errors': StringIO(),
-            })
-        environ.update(extra_env)
-        if base_url:
-            base = urlparse(base_url)
-            if base.netloc:
-                environ['HTTP_HOST'] = base.netloc
-            environ['SERVER_PORT'] = base.port \
-                                     or (443 if base.scheme == 'https' else 80)
-            environ['wsgi.url_scheme'] = base.scheme or 'http'
-            environ['SCRIPT_NAME'] = base.path or ''
+    def __init__(self, base_url='http://example.net/', authname='anonymous'):
+        environ = webob.Request.blank(base_url).environ
 
-        Request.__init__(self, environ, self.mock_start_response)
+        # Cleanup HTTP_HOST
+        if environ['HTTP_HOST'].endswith(':80'):
+            environ['HTTP_HOST'] = environ['HTTP_HOST'][:-3]
+
+        environ['SCRIPT_NAME'] = environ.pop('PATH_INFO')
+
+        start_response = Mock(name='start_response', spec=())
+        Request.__init__(self, environ, start_response)
         self.authname = authname
-
-    def mock_start_response(self, status, headers):
-        self.mock_response = status, headers
+        self.locale = None
 
     def redirect(self, url, permanent=False):
         raise Redirected(url, permanent)
+
+    @property
+    def start_response(self):
+        return self._start_response

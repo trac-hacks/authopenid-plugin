@@ -4,9 +4,11 @@ from __future__ import absolute_import
 
 from genshi.builder import tag
 from trac.core import implements
+from trac.util.html import escape
 from trac.web.chrome import INavigationContributor
-from trac.web.main import IRequestHandler
 from trac.web.auth import IAuthenticator, LoginModule
+from trac.web.main import IRequestHandler
+from trac.web.session import DetachedSession
 
 from authopenid.api import IUserLogin
 from authopenid.compat import Component
@@ -82,6 +84,8 @@ class UserLogin(Component):
             req.args['referer'] = referer
         req.environ['REMOTE_USER'] = username
         req.environ['PATH_INFO'] = '/login'
+
+        self._save_chrome_message(req, username)
         return self.login_module.process_request(req)
 
     def logout(self, req, referer=None):
@@ -99,3 +103,14 @@ class UserLogin(Component):
             req.args['referer'] = referer
         req.environ['PATH_INFO'] = '/logout'
         return self.login_module.process_request(req)
+
+    def _save_chrome_message(self, req, username):
+        # Save chrome message to session of new user
+        ds = DetachedSession(self.env, username)
+        if ds._new:
+            return                      # XXX: user doesn't exist. now what?
+        for type_ in ['warnings', 'notices']:
+            for (i, message) in enumerate(req.chrome[type_]):
+                ds['chrome.%s.%d' % (type_, i)] = escape(message, False)
+            req.chrome[type_][:] = []
+        ds.save()
