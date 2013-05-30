@@ -28,7 +28,6 @@ from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.main import IRequestHandler
 
 from genshi.builder import tag
-from genshi.core import Markup
 
 from authopenid.api import (
     DiscoveryFailure,
@@ -202,7 +201,7 @@ class AuthOpenIdPlugin(Component):
             return self.openid_consumer.begin(
                 req, openid_identifier, return_to, immediate=immediate)
         except DiscoveryFailure as exc:
-            chrome.add_warning(req, Markup(exc))
+            chrome.add_warning(req, exc)
             return self._login_form(req)
 
 
@@ -214,14 +213,14 @@ class AuthOpenIdPlugin(Component):
         try:
             identifier = self.openid_consumer.complete(req)
         except NegativeAssertion as exc:
-            chrome.add_warning(req, Markup(exc))
+            chrome.add_warning(req, exc)
             return self._login_form(req)
 
         # FIXME: should authz checks be performed only for new accounts?
         try:
             self._check_authorization(req, identifier)
         except NotAuthorized as exc:
-            chrome.add_warning(req, Markup(exc))
+            chrome.add_warning(req, exc)
             return self._login_form(req)
 
         # This could be abstracted?
