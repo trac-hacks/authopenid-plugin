@@ -18,7 +18,7 @@ class ExternalAuthorizer(Component):
     """ Implements the legacy ``check_list`` authorization.
 
     XXX: Could use some cleanup of config args.
-    FIXME: Document: No long strips scheme/slashes from identifier.
+    FIXME: Document: No longer strips scheme/slashes from identifier.
     FIXME: Change default value for ``check_list_key``
     FIXME: Return 403 if not authorized?
     FIXME: Provide alternative implementation for b/c
@@ -26,17 +26,17 @@ class ExternalAuthorizer(Component):
     implements(IOpenIDAuthorizationProvider, IUsernameProvider)
 
     # IOpenIDAuthorizationProvider
-    def authorize(self, claimed_identifier, extension_data=None):
-        self._check(claimed_identifier, extension_data)
+    def authorize(self, req, claimed_identifier):
+        self._check(req, claimed_identifier)
 
     # IUsernameProvider
-    def get_username(self, claimed_identifier, extension_data=None):
+    def get_username(self, req, claimed_identifier):
         try:
-            return self._check(claimed_identifier, extension_data)
+            return self._check(req, claimed_identifier)
         except NotAuthorized:
             pass
 
-    def _check(self, claimed_identifier, extension_data=None):
+    def _check(self, req, claimed_identifier):
         # FIXME: cache the result of the check (for the duration of
         # the current request)
         plugin = AuthOpenIdPlugin(self.env)

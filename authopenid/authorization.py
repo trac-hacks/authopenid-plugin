@@ -48,7 +48,7 @@ class WhitelistAuthorizer(Component):
         self.black_list_re = _compile_patterns(self.black_list)
         self.email_white_list_re = _compile_patterns(self.email_white_list)
 
-    def authorize(self, identifier):
+    def authorize(self, req, identifier):
         log = self.log
 
         # FIXME: the logic here is wierd, (but, I think, matches the

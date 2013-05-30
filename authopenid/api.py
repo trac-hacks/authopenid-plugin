@@ -199,7 +199,7 @@ class IOpenIDAuthorizationPolicy(Interface):
 
     """
 
-    def authorize(identifier):
+    def authorize(req, identifier):
         """ Determine with user is authorized to log in.
 
         All of the configured authorization policies will be called to
@@ -208,6 +208,7 @@ class IOpenIDAuthorizationPolicy(Interface):
         returns a true value, authorization will be denied; otherwise if
         any of the policies returns a true value, access will be granted.
 
+        :type req: :class:`trac.web.api.Request`
         :type identifier: :class:`IOpenIDIdentifier`
 
         :returns: True if the user is authorized.  If the policy returns
@@ -218,6 +219,19 @@ class IOpenIDAuthorizationPolicy(Interface):
 
         """
 
+class IOpenIDUserDataProvider(Interface):
+    """ Provides initial user data for new account registration via OpenID
+    """
+    def get_user_data(req, identifier):
+        """ Get username and attributes for new account created via OpenID
+
+        :type req: :class:`trac.web.api.Request`
+        :type identifier: :class:`IOpenIDIdentifier`
+
+        :returns: A pair ``(username, attributes)``, where ``attributes``
+            is a dict of user attributes (probably containing keys ``'name'``
+            and ``'email'`` as well as perhaps others.)
+        """
 
 class UserNotFound(KeyError):
     pass

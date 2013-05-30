@@ -219,7 +219,7 @@ class AuthOpenIdPlugin(Component):
 
         # FIXME: should authz checks be performed only for new accounts?
         try:
-            self._check_authorization(identifier)
+            self._check_authorization(req, identifier)
         except NotAuthorized as exc:
             chrome.add_warning(req, Markup(exc))
             return self._login_form(req)
@@ -244,10 +244,10 @@ class AuthOpenIdPlugin(Component):
         self.user_login.login(req, username, referer)
 
 
-    def _check_authorization(self, identifier):
+    def _check_authorization(self, req, identifier):
         # make sure to call all authorization providers to give each
         # a chance to raise NotAuthorized
-        results = [ policy.authorize(identifier)
+        results = [ policy.authorize(req, identifier)
                     for policy in self.authorization_policies ]
         if not any(bool(result) is True for result in results):
             # FIXME: better message
