@@ -24,12 +24,24 @@ from authopenid.api import (
 
 class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
     def setUp(self):
+        from authopenid.authopenid import AuthOpenIdPlugin
+        # make sure the identifier, and UserLogin are available
+        from authopenid import identifier_store, userlogin ; 'SIDE-EFFECTS'
+
         self.env = EnvironmentStub(enable=[
             'trac.*',
             'authopenid.identifier_store.*',
             'authopenid.userlogin.*',
             ])
         #assert self.env.dburi == 'sqlite::memory:'
+
+        # Instantiate the AuthOpenIdPlugin.
+        dummy_authz_policy = Mock()
+        # Prevent "No OpenID authorization_polices are configured" error.
+        with patch.object(AuthOpenIdPlugin, 'authorization_policies',
+                          [dummy_authz_policy]):
+            AuthOpenIdPlugin(self.env)
+
         self.req = MockRequest()
         Chrome(self.env).prepare_request(self.req)
 
@@ -38,16 +50,7 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
 
     def get_registration_module(self):
         from authopenid.register import OpenIDLegacyRegistrationModule
-        from authopenid.authopenid import AuthOpenIdPlugin
-        # make sure the identifier store is available
-        import authopenid.identifier_store ; 'SIDE-EFFECTS'
-
-        # prevent "No OpenID authorization_polices are configured" error
-        # when instantiating AuthOpenIdPlugin
-        dummy_authz_policy = Mock()
-        with patch.object(AuthOpenIdPlugin, 'authorization_policies',
-                          [dummy_authz_policy]):
-            return OpenIDLegacyRegistrationModule(self.env)
+        return OpenIDLegacyRegistrationModule(self.env)
 
     def create_user(self, username, identifier=None):
         from authopenid.identifier_store import OpenIDIdentifierStore
