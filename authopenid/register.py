@@ -115,7 +115,7 @@ class OpenIDLegacyRegistrationModule(Component):
             chrome.add_warning(req, tag("Can not complete registration. ", msg))
             req.redirect(req.href.openid('login'))
 
-        chrome.add_warning(req, tag(
+        chrome.add_notice(req, tag(
             "Successfully completed OpenID user registration. "
             "Your new username is ", tag.code(username), "."
             ))
