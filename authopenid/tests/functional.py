@@ -44,6 +44,7 @@ from openid.extensions import ax
 from trac.config import Configuration
 from trac.env import Environment
 from trac.web.main import dispatch_request
+from trac.web.session import DetachedSession
 from trac.wiki.admin import WikiAdmin
 
 from authopenid.compat import modernize_env
@@ -111,6 +112,12 @@ class FunctionalTests(unittest.TestCase):
             log_file = os.path.join(self.env.get_log_dir(), log_file)
         return log_file
 
+    def create_user(self, username, **kwargs):
+        ds = DetachedSession(self.env, username)
+        ds.update(kwargs)
+        assert ds, "ds.save() won't save unless there are some user attributes"
+        ds.save()
+
     def assert_logged_in(self, resp):
         self.assertTrue(resp.html('a', href=re.compile(r'/logout\b')),
                         "Not logged in (no logout link found)")
@@ -145,30 +152,39 @@ class FunctionalTests(unittest.TestCase):
     def assert_warning(self, resp, text=None):
         self.assert_chrome_message(resp, text, 'warning')
 
-    def submit_login_form(self, openid_identifier):
-        resp = self.app.get('/').click(href='/openid/login')
-        self.assertEqual(resp.status_int, 200)
+    def submit_authentication_form(self, resp, openid_identifier):
+        """ Find the openid authentication form in resp, and submit it
 
+        Follow any resulting redirects (including the auto-submit
+        form, if any)
+        """
+        self.assertEquals(resp.status_int, 200)
         for form in set(resp.forms.values()):
             if 'openid_identifier' in form.fields:
-                form['openid_identifier'] = openid_identifier
-                return form.submit()
-        self.fail("Can not find login form")
+                break
+        else:
+            self.fail("Can not find login form")
 
-    def do_login(self, openid_identifier):
-        resp = self.submit_login_form(openid_identifier)
-        self.assertEqual(resp.status_int, 200)
-        self.assertEqual(resp.form.action, self.op.op_endpoint)
-        self.assertEqual(resp.form.method, 'post')
+        form['openid_identifier'] = openid_identifier
+        resp = form.submit()
 
-        # Do real submission to our test OP
-        resp = submit_form(resp.form)
-        self.assertEqual(resp.status_code, 302)
-        location = resp.headers['location']
-        self.assertEqual(urlparse(location).path, '/openid/response')
+        if resp.status_int == 200 \
+               and resp.html.find('input', {'name': 'openid.mode'}):
+            # Handle auto-submit form
+            self.assertEqual(resp.form.action, self.op.op_endpoint)
+            # Do real submission to our test OP
+            resp = submit_form(resp.form)
+            self.assertEqual(resp.status_code, 302)
+            location = resp.headers['location']
+            self.assertTrue(location.startswith(self.env.base_url))
+            # Process the indirect response
+            return self.app.get(location).maybe_follow()
+        # XXX: Should handle 302 redirect to OP?
 
-        # Process the indirect response
-        return self.app.get(location).maybe_follow()
+        while resp.status_int == 302:
+            resp = resp.follow()
+        self.assertEquals(resp.status_int, 200)
+        return resp
 
 
     @print_log_on_failure
@@ -181,32 +197,36 @@ class FunctionalTests(unittest.TestCase):
 
     @print_log_on_failure
     def test_login_empty_identifier(self):
-        resp = self.submit_login_form('')
-        self.assertEqual(resp.status_int, 200)
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, '')
+        self.assertEquals(resp.request.path_info, '/openid/login')
         self.assertRegexpMatches(resp.text, r'(?i)Enter an OpenID Identifier')
         self.assert_logged_out(resp)
 
     @print_log_on_failure
     def test_discovery_failure(self):
-        resp = self.submit_login_form('http://does.not.exist/')
-        self.assertEqual(resp.status_int, 200)
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, 'http://does.not.exist/')
         self.assertIn('Error fetching XRDS document', resp.normal_body)
         self.assertTrue(resp.html.find('input', {'name':'openid_identifier'}))
         self.assert_logged_out(resp)
 
     @print_log_on_failure
     def test_login_cancelled(self):
-        identifier = self.op.get_identifier('cancelled')
-        resp = self.do_login(identifier)
+        identifier = self.op.get_identifier('__cancelled__')
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, identifier)
         self.assert_logged_out(resp)
         self.assert_warning(resp, r'Cancelled')
 
     @print_log_on_failure
     def test_login_logout(self):
         identifier = self.op.get_identifier('someuser')
-        resp = self.do_login(identifier)
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, identifier)
         self.assert_logged_in(resp)
         self.assert_notice(resp, r'Your new username is .*\bsomeuser\b')
+        self.assertEquals(resp.request.path_info, '/')
 
         resp = resp.click(href='/logout').maybe_follow()
         self.assert_logged_out(resp)
@@ -217,7 +237,8 @@ class FunctionalTests(unittest.TestCase):
         self.env.config.set('openid', 'black_list', identifier)
         self.env.config.save()
 
-        resp = self.do_login(identifier)
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, identifier)
         self.assert_logged_out(resp)
         self.assertEqual(resp.request.path_info, '/openid/response')
         self.assert_warning(resp, r'(?i)Not\s*Authorized')
@@ -228,7 +249,8 @@ class FunctionalTests(unittest.TestCase):
                             'OpenIDInteractiveRegistrationModule')
         self.env.config.save()
         identifier = self.op.get_identifier('someuser')
-        resp = self.do_login(identifier)
+        resp = self.app.get('/').click(href='/openid/login')
+        resp = self.submit_authentication_form(resp, identifier)
 
         self.assert_logged_out(resp)
         regform = resp.forms['register']
@@ -237,7 +259,37 @@ class FunctionalTests(unittest.TestCase):
         resp = regform.submit().maybe_follow()
         self.assert_logged_in(resp)
         self.assert_notice(resp, r'Your new username is .*\bNew Username\b')
+        self.assertEquals(resp.request.path_info, '/')
 
+    @print_log_on_failure
+    def test_prefs(self):
+        self.env.config.set('components', 'trac.web.auth.*', 'enabled')
+        self.env.config.save()
+
+        self.create_user('joe', name='Joe')
+        resp = self.app.get('/login', extra_environ={'REMOTE_USER': 'joe'})
+        resp = resp.follow()
+        self.assert_logged_in(resp)
+
+        resp = resp.click('Preferences')
+        resp = resp.click('OpenID')
+
+        # Abstract this
+        new_identifier = self.op.get_identifier('joey')
+        resp = self.submit_authentication_form(resp, new_identifier)
+        self.assertEqual(resp.request.path_info, '/prefs/openid')
+        self.assertTrue(resp.html('input', {'name': 'association',
+                                            'value': new_identifier}))
+        self.assertTrue(resp.html('code', text=new_identifier))
+
+        # Delete the association
+        form = next(form for form in resp.forms.values()
+                    if 'association' in form.fields
+                    and form['association'].value == new_identifier)
+        resp = form.submit().maybe_follow()
+        self.assertEqual(resp.request.path_info, '/prefs/openid')
+        self.assertFalse(resp.html('input', {'name': 'association',
+                                             'value': new_identifier}))
 
 def make_wsgi_app(trac_env):
     def app(environ, start_response):
@@ -380,7 +432,7 @@ class TestOpenIDServer(object):
         else:
             username = None
 
-        if username in ('cancelled', None):
+        if username in ('__cancelled__', None):
             return request.answer(False) # not authenticated
 
         response = request.answer(True)

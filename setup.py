@@ -88,6 +88,7 @@ setup(
             'OpenIDExtensionsProvider = authopenid.openid_ext',
             'OpenIDIdentifierStore = authopenid.identifier_store',
             'OpenIDRegistrationModule = authopenid.register',
+            'OpenIDPreferenceModule = authopenid.preferences',
             ],
         },
 
