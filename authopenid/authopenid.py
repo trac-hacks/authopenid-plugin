@@ -206,7 +206,7 @@ class AuthOpenIdPlugin(Component):
             return self.openid_consumer.begin(
                 req, oid_identifier, return_to, immediate=immediate)
         except DiscoveryFailure as exc:
-            chrome.add_warning(req, exc)
+            chrome.add_warning(req, escape("Discovery failure: %s") % str(exc))
             return self._login_form(req)
 
     def _do_process(self, req):
