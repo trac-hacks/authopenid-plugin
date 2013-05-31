@@ -131,6 +131,12 @@ class EnvironmentModernizer(object):
         # but at present, there doesn't seem to be a need.
         raise AttributeError('Attributes can not be set through proxy')
 
+    def __getitem__(self, key):
+        return self.env[key]
+
+    def __contains__(self, key):
+        return key in self.env
+
     @property
     def db_transaction(self):
         return TransactionContextManager(self)

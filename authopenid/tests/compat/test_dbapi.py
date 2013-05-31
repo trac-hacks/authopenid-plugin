@@ -179,6 +179,14 @@ class TestEnvironmentModernizer(CnxTestBase):
                  as QueryContextManager:
             self.assertEquals(env.db_query, QueryContextManager.return_value)
 
+    def test_getitem(self):
+        env = self.modernize_env(self.env)
+        self.assertIs(env[self.env.__class__], self.env)
+
+    def test_contains(self):
+        env = self.modernize_env(self.env)
+        self.assertIn(self.env.__class__, env)
+
     def test_attributes_readonly(self):
         env = self.modernize_env(self.env)
         with self.assertRaises(AttributeError):
