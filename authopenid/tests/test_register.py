@@ -104,6 +104,7 @@ class MockRequest(Request):
         Request.__init__(self, environ, start_response)
         self.authname = authname
         self.locale = None
+        self.session = dict()
 
     def redirect(self, url, permanent=False):
         raise Redirected(url, permanent)

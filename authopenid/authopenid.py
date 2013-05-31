@@ -40,7 +40,7 @@ from authopenid.api import (
     IOpenIDConsumer,
     IUserLogin,
     )
-from authopenid.util import sanitize_referer
+from authopenid.util import PickleSession, sanitize_referer
 
 ## Options we used to support but no longer do
 _DISCONTINUED_OPTIONS = [
@@ -52,6 +52,8 @@ _DISCONTINUED_OPTIONS = [
 
 class AuthOpenIdPlugin(Component):
     implements(INavigationContributor, ITemplateProvider, IRequestHandler)
+
+    session_skey = 'openid_session_data'
 
     ################################################################
     # Configuration
@@ -166,7 +168,7 @@ class AuthOpenIdPlugin(Component):
     def process_request(self, req):
         if req.authname != 'anonymous':
             chrome.add_warning(req, "Already logged in")
-            return req.redirect(self._get_referer(req))
+            return req.redirect(self.get_start_page(req))
 
         if req.path_info == '/openid/login':
             return self._do_login(req)
@@ -178,10 +180,15 @@ class AuthOpenIdPlugin(Component):
         assert req.authname == 'anonymous'
 
         if req.args.get('referer'):
-            self._save_referer(req)
+            # This is a new login attempt
+            # Clear out any saved session, and save the url we should
+            # return to after the login process is completed.
+            oid_session = self.get_session(req)
+            oid_session.clear()
+            oid_session['start_page'] = req.args['referer']
 
         if req.method == 'POST':
-            openid_identifier = req.args.get('openid_identifier')
+            openid_identifier = req.args.get('openid_identifier').strip()
             immediate = 'immediate' in req.args # FIXME: used?
         elif self.default_openid:
             openid_identifier = self.default_openid
@@ -202,7 +209,6 @@ class AuthOpenIdPlugin(Component):
             chrome.add_warning(req, exc)
             return self._login_form(req)
 
-
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
         """
@@ -221,24 +227,16 @@ class AuthOpenIdPlugin(Component):
             chrome.add_warning(req, exc)
             return self._login_form(req)
 
-        # This could be abstracted?
-        #username = self.get_username(identity, extension_data)
-        #if not username:
-        #    # FIXME:
-        #    raise FIXME("No user found for identity")
-
-        #referer = self._get_referer(req)
-        #return self.user_login.login(req, username, referer)
-
         username = self.identifier_store.get_user(identifier)
         # XXX: update name/email if account already exists?
 
         if username is None:
             return self.registration_module.register_user(req, identifier)
 
-        # Complete the user logLog the user in
-        referer = self._get_referer(req)
-        self.user_login.login(req, username, referer)
+        # Log the user in
+        chrome.add_notice(req, escape('Logged in as %s') % tag.code(username))
+        self.user_login.login(req, username,
+                              referer=self.get_start_page(req))
 
 
     def _check_authorization(self, req, identifier):
@@ -262,24 +260,36 @@ class AuthOpenIdPlugin(Component):
 
         return 'openidlogin.html', data, None
 
-    # FIXME: needs work
-    def _save_referer(self, req):
-        for candidate in (req.args.get('referer'), req.get_header('Referer')):
-            referer = sanitize_referer(candidate, req.base_url)
-            if referer:
-                req.session['authopenid.referer'] = referer
-                break
-        else:
-            req.session.pop('authopenid.referer', None)
 
-    def _get_referer(self, req):
-        for candidate in [req.session.pop('authopenid.referer', None),
-                          req.args.get('referer'),
-                          req.get_header('Referer')]:
-            referer = sanitize_referer(candidate, req.base_url)
-            if referer:
-                if referer.startswith(req.abs_href('openid')):
-                    # don't redirect back to any of our pages
-                    break
-                return referer
-        return self.env.abs_href()
+    def get_session(self, req):
+        """ This returns our own private session dict.
+
+        This session dict is special in that it can store anything
+        which is picklable (trac's ``req.session`` can only store
+        strings.)
+
+        This is used to keep state through the course of a single
+        login/registration attempt/session.
+        """
+        return PickleSession(req.session, self.session_skey)
+
+    def get_start_page(self, req, clear_session=True):
+        """ Get the URL from which the user started his log in attempt
+
+        Also, by default, clears the openid session.
+
+        :param bool clear_session: Whether to clear the openid session.
+        :returns: The url to which the user should be redirected.
+        """
+        oid_session = self.get_session(req)
+        start_page = oid_session.pop('start_page', None)
+        if clear_session:
+            oid_session.clear()
+
+        start_page = sanitize_referer(start_page, req.base_url)
+        if not start_page:
+            return self.env.abs_href()
+        elif start_page.startswith(req.abs_href('openid')):
+            # don't redirect back to any of our pages
+            return self.env.abs_href()
+        return start_page

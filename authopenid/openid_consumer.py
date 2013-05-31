@@ -25,8 +25,9 @@ from authopenid.api import (
     OpenIDIdentifier,
     IOpenIDConsumer,
     )
+from authopenid.authopenid import AuthOpenIdPlugin
 from authopenid.compat import Component, TransactionContextManager
-from authopenid.util import get_db_scheme, PickleSession, table_exists
+from authopenid.util import get_db_scheme, table_exists
 
 # XXX: It looks like python-openid is going to switch to using the
 # stock logging module.  We'll need to detect when that happens.
@@ -131,8 +132,6 @@ class OpenIDConsumer(Component):
 
     consumer_class = openid.consumer.consumer.Consumer # testing
 
-    consumer_skey = 'openid_session_data'
-
     schema_version_key = 'authopenid.openid_store_version'
 
     # IOpenIDConsumer methods
@@ -145,7 +144,7 @@ class OpenIDConsumer(Component):
         if trust_root is None:
             trust_root = self._get_trust_root(req)
 
-        oid_session = PickleSession(req.session, self.consumer_skey)
+        oid_session = AuthOpenIdPlugin(self.env).get_session(req)
         with openid_store(self.env) as store:
             with openid_logging_to(log):
                 consumer = self.consumer_class(oid_session, store)
@@ -172,7 +171,7 @@ class OpenIDConsumer(Component):
         if current_url is None:
             current_url = req.abs_href(req.path_info)
 
-        oid_session = PickleSession(req.session, self.consumer_skey)
+        oid_session = AuthOpenIdPlugin(self.env).get_session(req)
         with openid_store(self.env) as store:
             with openid_logging_to(self.env.log):
                 consumer = self.consumer_class(oid_session, store)
