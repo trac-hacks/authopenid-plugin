@@ -179,24 +179,24 @@ class AuthOpenIdPlugin(Component):
 
         assert req.authname == 'anonymous'
 
-        if req.args.get('referer'):
+        if 'referer' in req.args:
             # This is a new login attempt
             # Clear out any saved session, and save the url we should
             # return to after the login process is completed.
             oid_session = self.get_session(req)
             oid_session.clear()
-            oid_session['start_page'] = req.args['referer']
+            oid_session['start_page'] = req.args.getfirst('referer')
 
         if req.method == 'POST':
-            openid_identifier = req.args.get('openid_identifier').strip()
+            oid_identifier = req.args.getfirst('openid_identifier', '').strip()
             immediate = 'immediate' in req.args # FIXME: used?
         elif self.default_openid:
-            openid_identifier = self.default_openid
+            oid_identifier = self.default_openid
             immediate = False
         else:
             return self._login_form(req)
 
-        if not openid_identifier:
+        if not oid_identifier:
             chrome.add_warning(req, "Enter an OpenID identifier")
             return self._login_form(req)
 
@@ -204,7 +204,7 @@ class AuthOpenIdPlugin(Component):
 
         try:
             return self.openid_consumer.begin(
-                req, openid_identifier, return_to, immediate=immediate)
+                req, oid_identifier, return_to, immediate=immediate)
         except DiscoveryFailure as exc:
             chrome.add_warning(req, exc)
             return self._login_form(req)

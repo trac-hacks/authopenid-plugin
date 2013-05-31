@@ -171,11 +171,13 @@ class OpenIDConsumer(Component):
         if current_url is None:
             current_url = req.abs_href(req.path_info)
 
+        # openid.consumer wants a plain dict (single value for each key)
+        query = dict(req.arg_list)
         oid_session = AuthOpenIdPlugin(self.env).get_session(req)
         with openid_store(self.env) as store:
             with openid_logging_to(self.env.log):
                 consumer = self.consumer_class(oid_session, store)
-                response = consumer.complete(req.args, current_url)
+                response = consumer.complete(query, current_url)
 
                 if response.status == FAILURE:
                     raise AuthenticationFailed(

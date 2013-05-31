@@ -115,8 +115,9 @@ class PAPEExtensionProvider(OpenIDExtensionProvider):
         doc="Default PAPE method to request from OpenID provider.")
 
     def _get_extension_request(self, req):
-        pape_methods = [ self.pape_method, req.args.get('pape_method') ]
-        requested_policies = filter(None, pape_methods)
+        requested_policies = req.args.getlist('pape_method') # FIXME: needed?
+        if self.pape_method:
+            requested_policies.append(self.pape_method)
         if requested_policies:
             return pape.Request(requested_policies)
 

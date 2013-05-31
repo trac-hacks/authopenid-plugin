@@ -71,6 +71,7 @@ class OIDConsumerTestMixin(object):
         req.session = dict()
         req.authname = 'anonymous'
         req.abs_href = Href(self.BASE_URL)
+        req.arg_list = []
         def redirect(url, permanent=False):
             raise Redirected(url, permanent)
         req.redirect.side_effect = redirect

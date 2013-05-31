@@ -199,7 +199,8 @@ class OpenIDInteractiveRegistrationModule(RegistrationModuleBase):
         user_attr = dict(self._get_user_attributes(oid_identifier))
 
         try:
-            username = self._validate_username(req, req.args.get('username'))
+            username = self._validate_username(
+                req, req.args.getfirst('username', ''))
         except InvalidUsername:
             # _validate_username has already added chrome warning
             return self._register_form(req, username, user_attr)
