@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from trac.core import Interface
 from genshi.builder import tag
-from genshi.core import Markup
+from genshi.core import escape
 
 from openid.consumer.discover import DiscoveryFailure ; 'SIDE-EFFECTS'
 
@@ -21,7 +21,7 @@ class OpenIDException(Exception):
             message = self.args[0]
         else:
             message = self.__class__.__name__
-        return Markup(message)
+        return escape(message)
 
     def __unicode__(self):
         return unicode(self.__html__().striptags().stripentities())
@@ -82,12 +82,6 @@ class SetupNeeded(NegativeAssertion):
     def setup_url(self):
         return self.args[1]
 
-    def __html__(self):
-        message = "Setup needed"
-        if self.setup_url:
-            message = tag.a(message, href=self.setup_url)
-        return Markup(message)
-
 class AuthenticationFailed(NegativeAssertion):
     """ OpenId Authentication failed.
 
@@ -98,24 +92,20 @@ class AuthenticationFailed(NegativeAssertion):
 
     """
     def __init__(self, reason=None, identity_url=None):
-        super(AuthenticationFailed, self).__init__(reason, identity_url)
+        msg = tag("Authentication failed")
+        if identity_url:
+            msg += tag(" for ", tag.code(identity_url))
+        if reason:
+            msg += tag(": ", reason)
+        super(AuthenticationFailed, self).__init__(msg, reason, identity_url)
 
     @property
     def reason(self):
-        return self.args[0]
+        return self.args[1]
 
     @property
     def identity_url(self):
-        return self.args[1]
-
-    def __html__(self):
-        message = tag("Authentication failed")
-        if self.identity_url:
-            message += tag(" for ", tag.code(self.identity_url))
-        if self.reason:
-            message += tag(": ", self.reason)
-        return Markup(message)
-
+        return self.args[2]
 
 class OpenIDIdentifier(str):
     """ Represents an OpenID identifier response as received from an OP
@@ -236,8 +226,8 @@ class UserNotFound(KeyError):
 
 class OpenIDIdentifierInUse(OpenIDException, KeyError):
     def __init__(self, username, identifier):
-        msg = tag("User ", tag.code(username),
-                  " is already using identifier ", tag.code(identifier))
+        msg = escape("User %s is aready using identifier %s") % (
+            tag.code(username), tag.code(identifier))
         super(OpenIDIdentifierInUse, self).__init__(msg, username, identifier)
 
     @property

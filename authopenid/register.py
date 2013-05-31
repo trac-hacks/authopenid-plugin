@@ -5,6 +5,7 @@ from __future__ import absolute_import
 
 import re
 
+from genshi.core import escape
 from genshi.builder import tag
 from trac.core import implements
 from trac.config import BoolOption
@@ -106,13 +107,13 @@ class OpenIDLegacyRegistrationModule(Component):
                 msg = "A user already exists with username %r" % username
             else:
                 msg = "Could not deduce a valid username"
-            chrome.add_warning(req, tag("Can not complete registration. ", msg))
+            chrome.add_warning(
+                req, escape("Can not complete registration: %s") % msg)
             req.redirect(req.href.openid('login'))
 
-        chrome.add_notice(req, tag(
+        chrome.add_notice(req, escape(
             "Successfully completed OpenID user registration. "
-            "Your new username is ", tag.code(username), "."
-            ))
+            "Your new username is %s.") % tag.code(username))
         referer = None                  # FIXME:
         user_login.login(req, username, referer)
 

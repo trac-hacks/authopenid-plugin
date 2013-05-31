@@ -27,6 +27,7 @@ from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.main import IRequestHandler
 
+from genshi.core import escape
 from genshi.builder import tag
 
 from authopenid.api import (
@@ -189,7 +190,7 @@ class AuthOpenIdPlugin(Component):
             return self._login_form(req)
 
         if not openid_identifier:
-            chrome.add_warning(req, "Enter an OpenID Identifier")
+            chrome.add_warning(req, "Enter an OpenID identifier")
             return self._login_form(req)
 
         return_to = req.abs_href.openid('response')
