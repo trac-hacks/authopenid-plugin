@@ -71,7 +71,7 @@ class OpenIDIdentifierStore(Component):
         """
         user = self._get_detached_session(username) # raises UserNotFound
         if self.identifier_skey in user:
-            return set(user[self.identifier_skey])
+            return set([user[self.identifier_skey]])
         else:
             return set()
 

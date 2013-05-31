@@ -45,8 +45,8 @@ class TestOpenIDIdentiferStore(unittest.TestCase):
         self.create_user('joe', '=joe')
         self.create_user('bob')
         store = self.get_identifier_store()
-        self.assertEqual(set(store.get_identifiers('joe')), set('=joe'))
-        self.assertEqual(set(store.get_identifiers('bob')), set())
+        self.assertEqual(store.get_identifiers('joe'), set(['=joe']))
+        self.assertEqual(store.get_identifiers('bob'), set())
 
     def test_get_identifiers_raises_user_not_found(self):
         store = self.get_identifier_store()
@@ -57,7 +57,7 @@ class TestOpenIDIdentiferStore(unittest.TestCase):
         self.env.config.set('trac', 'ignore_auth_case', True)
         self.create_user('joe', '=joe')
         store = self.get_identifier_store()
-        self.assertEqual(set(store.get_identifiers('jOe')), set('=joe'))
+        self.assertEqual(store.get_identifiers('jOe'), set(['=joe']))
 
     def test_add_identifier(self):
         self.create_user('bob')
@@ -96,13 +96,13 @@ class TestOpenIDIdentiferStore(unittest.TestCase):
         self.create_user('joe', '=joe')
         store = self.get_identifier_store()
         store.discard_identifier('joe', ident('=joe'))
-        self.assertEqual(set(store.get_identifiers('joe')), set())
+        self.assertEqual(store.get_identifiers('joe'), set())
 
     def test_discard_identifier_no_match(self):
         self.create_user('joe', '=joe')
         store = self.get_identifier_store()
         store.discard_identifier('joe', ident('=bob'))
-        self.assertEqual(set(store.get_identifiers('joe')), set('=joe'))
+        self.assertEqual(store.get_identifiers('joe'), set(['=joe']))
 
     def test_discard_identifier_raises_user_not_found(self):
         store = self.get_identifier_store()
@@ -114,7 +114,7 @@ class TestOpenIDIdentiferStore(unittest.TestCase):
         self.create_user('joe', '=joe')
         store = self.get_identifier_store()
         store.discard_identifier('JOE', ident('=joe'))
-        self.assertEqual(set(store.get_identifiers('Joe')), set())
+        self.assertEqual(store.get_identifiers('Joe'), set())
 
 def ident(s):
     return OpenIDIdentifier(s)
