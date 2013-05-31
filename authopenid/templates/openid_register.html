@@ -1,0 +1,37 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/">
+
+  <xi:include href="layout.html" />
+
+  <head>
+    <title>OpenID &mdash; New User Registration</title>
+  </head>
+
+  <body>
+    <form name="register" action="${register_url}" method="post"
+          accept-charset="UTF-8">
+      <p py:if="name">Welcome, ${name}!</p>
+      <p>
+        It looks like you haven&rsquo;t been here before.
+        I don&rsquo;t recognize your OpenID identifier, in any case.
+        Please select a local username for your new account.
+        <!--! FIXME: If you already have an account here, you may want
+             to log in to it (using some other authentication method &mdash;
+             however you logged in last time you were here).  Then visit
+             the <em>preferences</em> page, where you can associated a
+             new OpenID identifier with your existing account.
+          -->
+      </p>
+      <fieldset>
+        <p><label for="username">New Username:</label>
+          <input type="text" name="username" id="username" value="${username}"/>
+          <input type="submit" value="Register" />
+        </p>
+      </fieldset>
+    </form>
+  </body>
+</html>

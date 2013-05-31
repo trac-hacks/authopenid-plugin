@@ -3,6 +3,7 @@
 """
 from __future__ import absolute_import
 
+from pkg_resources import resource_filename
 import re
 
 from genshi.core import escape
@@ -10,17 +11,212 @@ from genshi.builder import tag
 from trac.core import implements
 from trac.config import BoolOption
 from trac.web import chrome
+from trac.web.chrome import ITemplateProvider
+from trac.web.main import IRequestHandler
 from trac.web.session import DetachedSession
 
 from authopenid.api import (
+    OpenIDException,
     FULL_NAME, EMAIL_ADDRESS, NICKNAME,
     IOpenIDUserRegistration,
     )
 from authopenid.authopenid import AuthOpenIdPlugin
 from authopenid.compat import Component
 
-# FIXME: support interactive username selection
-#   - also (optionally) allow user to adjust email, fullname?
+# FIXME: probably move exceptions to api
+class InvalidUsername(OpenIDException, ValueError):
+    def __init__(self, username, detail=None):
+        msg = escape("%s is not a valid username") % tag.code(username)
+        if detail:
+            msg += escape(": %s") % detail
+        super(InvalidUsername, self).__init__(msg, username, detail)
+
+    @property
+    def username(self):
+        return self.args[1]
+
+    @property
+    def detail(self):
+        return self.args[2]
+
+class UserExists(InvalidUsername):
+    pass
+
+
+class RegistrationModuleBase(Component):
+    abstract = True
+
+    def _check_username(self, username):
+        # FIXME: ':' not being a valid character means identifier URLs
+        # are not allowed?
+        #
+        #  (This list gleaned from the TracAccountManager plugin.)
+        #   - No ':', '[', ']'
+        #   - No all upper case (those are permissions)
+        #   - username.lower() not in ('anonymous', 'authenticated')
+        #   - do a case-insenstive check against existing usernames
+        #     - also consider any static lists of potential usernames
+        # FIXME: make this more lenient/configurable (is unicode allowed?)
+        if not username:
+            raise InvalidUsername(username, "empty username")
+        if username.strip() != username:
+            raise InvalidUsername(username, "leading or trailing white space")
+        if username.isupper():
+            raise InvalidUsername(username, "can not be all upper case")
+        if username.lower() in ('anonymous', 'authenticated'):
+            raise InvalidUsername(username, "reserved")
+        if not re.match(r'\A(?!\s)[-=\w\d@\. ()]+(?!<\s)\Z', username):
+            raise InvalidUsername(username, "invalid characters in username")
+
+    def _validate_username(self, req, username):
+        # FIXME: unify with OpenIDIdentifierStore._maybe_lowercase_username
+        username = username.strip() if username else ''
+        if self.config.getbool('trac', 'ignore_auth_case'):
+            username = username.lower()
+        try:
+            self._check_username(username)
+        except InvalidUsername as exc:
+            chrome.add_warning(req, exc)
+            raise
+        return username
+
+    def _get_user_attributes(self, openid_identifier):
+        # FIXME: this should be done by some other component(s) (so as
+        # to be configurable.)  Might want data from SREG/AX, might want
+        # to do external file or http lookup, etc, etc...
+        signed_data = openid_identifier.signed_data
+        for akey, dkey in [('name', FULL_NAME), ('email', EMAIL_ADDRESS)]:
+            try:
+                value = next(v.strip() for v in signed_data.getall(dkey)
+                             if v.strip())
+            except StopIteration:
+                continue
+            yield akey, value
+
+    def _preferred_usernames(self, openid_identifier):
+        # FIXME: this should be done by some other component(s) (so as
+        # to be configurable.)  Might want data from SREG/AX, might want
+        # to do external file or http lookup, etc, etc...
+        seen = set()
+        for key in FULL_NAME, NICKNAME, EMAIL_ADDRESS:
+            for value in openid_identifier.signed_data.getall(key):
+                value = value.strip()
+                if value and value not in seen:
+                    seen.add(value)
+                    yield value
+
+    # Move this somewhere else (it might be more generally useful)?
+    def _create_user(self, username, openid_identifier=None,  user_attr=None):
+        # FIXME: check for conflicts with existing usernames differing
+        # only in case?
+        identifier_store = AuthOpenIdPlugin(self.env).identifier_store
+
+        with self.env.db_transaction as db:
+            user = DetachedSession(self.env, username)
+            if not user._new:
+                raise UserExists(username, "is use by another user")
+
+            if user_attr:
+                user.update(user_attr)
+            if len(user) > 0:
+                user.save()
+            else:
+                # user.save won't create a new user with no data
+                db("INSERT INTO session"
+                   " (sid, authenticated, last_visit)"
+                   " VALUES (%s, 1, 0)", (username,))
+
+            if openid_identifier:
+                identifier_store.add_identifier(username, openid_identifier)
+
+
+class OpenIDInteractiveRegistrationModule(RegistrationModuleBase):
+    """ Handles new user registration for OpenID-authenticated users.
+
+    This is a new interactive version which lets the user choose
+    the username for the new trac account.
+
+    """
+    implements(ITemplateProvider, IRequestHandler,
+               IOpenIDUserRegistration)
+
+    # FIXME: allow user to edit name, email?  (needs config, probably)
+
+    # IOpenIDUserRegistration
+    def register_user(self, req, openid_identifier):
+        """ Register a new OpenID-authenticated user.
+
+        This displays a registration form which allows the user to
+        select the username for his/her new trac account.
+
+        This is a no-return method: a normal exit is via :exc:`RequestDone`.
+        """
+        oid_session = AuthOpenIdPlugin(self.env).get_session(req)
+        oid_session['register.identifier'] = openid_identifier
+
+        try:
+            username = next(self._preferred_usernames(openid_identifier))
+        except StopIteration:
+            username = ''
+        user_attr = dict(self._get_user_attributes(openid_identifier))
+
+        return self._register_form(req, username, user_attr)
+
+    # ITemplateProvider methods
+    def get_htdocs_dirs(self):
+        return [('authopenid', resource_filename(__name__, 'htdocs'))]
+
+    def get_templates_dirs(self):
+        return [resource_filename(__name__, 'templates')]
+
+    # IRequestHandler methods
+    def match_request(self, req):
+        return req.path_info == '/openid/register'
+
+    def process_request(self, req):
+        if req.authname != 'anonymous':
+            chrome.add_warning(req, "Already logged in!")
+            return req.redirect(AuthOpenIdPlugin(self.env).get_start_page(req))
+
+        oid_session = AuthOpenIdPlugin(self.env).get_session(req)
+        oid_identifier = oid_session.get('register.identifier')
+        if not oid_identifier:
+            # shouldn't happen unless the user is doing something funny
+            # like re-posting the register form
+            self.log.warning(
+                "No openid identifier in session for registration")
+            req.redirect(req.href())
+        user_attr = dict(self._get_user_attributes(oid_identifier))
+
+        try:
+            username = self._validate_username(req, req.args.get('username'))
+        except InvalidUsername:
+            # _validate_username has already added chrome warning
+            return self._register_form(req, username, user_attr)
+
+        try:
+            self._create_user(username, oid_identifier, user_attr)
+        except UserExists as exc:
+            chrome.add_warning(exc)
+            return self._register_form(req, username, user_attr)
+
+        chrome.add_notice(req, escape(
+            "Successfully completed new OpenID user registration. "
+            "Your new username is %s.") % tag.code(username))
+
+        authopenid = AuthOpenIdPlugin(self.env)
+        start_page = authopenid.get_start_page(req)
+        authopenid.user_login.login(req, username, start_page)
+
+    def _register_form(self, req, username, user_attr):
+        data = {
+            'username': username,
+            'register_url': req.href.openid('register'),
+            'name': user_attr.get('name', ''),
+            'email': user_attr.get('email', ''),
+            }
+        return 'openid_register.html', data, None
+
 
 class OpenIDLegacyRegistrationModule(Component):
     """ Handles new user registration for OpenID-authenticated users.
@@ -114,8 +310,8 @@ class OpenIDLegacyRegistrationModule(Component):
         chrome.add_notice(req, escape(
             "Successfully completed OpenID user registration. "
             "Your new username is %s.") % tag.code(username))
-        referer = None                  # FIXME:
-        user_login.login(req, username, referer)
+        start_page = AuthOpenIdPlugin(self.env).get_start_page(req)
+        user_login.login(req, username, start_page)
 
     def _validate_username(self, req, username):
         # FIXME: ':' not being a valid character means identifier URLs

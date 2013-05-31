@@ -22,6 +22,12 @@ class OpenIDIdentifierStore(Component):
     # db table to record the associations, I think)
     # (This would be good as the new table would be indexed by identifier
     # as well.)
+    #
+    # FIXME: should store email with identifier so that something better
+    # than
+    #  https://www.google.com/accounts/o8/id?id=AItOawlE_gp4kdNs7K0Lh0HAc__hJgi2eZnajM4
+    # can be shown to the user on the "here are the openid identifiers
+    # associated with your account" panel.
 
     # FIXME: handle username case
 
