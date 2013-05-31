@@ -45,6 +45,8 @@ from trac.env import Environment
 from trac.web.main import dispatch_request
 from trac.wiki.admin import WikiAdmin
 
+from authopenid.compat import modernize_env
+
 if openid.version_info <= (2, 2, 5):
     # Warnings expected from python-openid 2.2.5
     # NB: 2.2.5 reports itself as 2.2.1
@@ -77,8 +79,6 @@ def print_log_on_failure(wrapped):
 class FunctionalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.env = TempEnvironment()
-
         # Start up test OP server
         cls.op = TestOpenIDServer()
         cls.op_server = StopableWSGIServer.create(cls.op.wsgi_app)
@@ -90,6 +90,8 @@ class FunctionalTests(unittest.TestCase):
         cls.op_server.shutdown()
 
     def setUp(self):
+        self.env = TempEnvironment.singleton()
+
         self.truncate_log_file()
         the_app = make_wsgi_app(self.env)
         the_app = webtest.lint.middleware(the_app)
@@ -213,8 +215,29 @@ class FunctionalTests(unittest.TestCase):
     @unittest.expectedFailure
     def test_login_unauthorized(self):
         identifier = self.op.get_identifier('unauthorized')
+        self.env.config.set('openid', 'blacklist', identifier)
+        self.env.config.save()
+
         resp = self.do_login(identifier)
+        #import pdb; pdb.set_trace()
         self.assert_logged_out(resp)
+
+    @print_log_on_failure
+    def test_interactive_registration(self):
+        self.env.config.set('openid', 'registration_module',
+                            'OpenIDInteractiveRegistrationModule')
+        self.env.config.save()
+        identifier = self.op.get_identifier('someuser')
+        resp = self.do_login(identifier)
+
+        self.assert_logged_out(resp)
+        regform = resp.forms['register']
+        regform['username'] = 'New Username'
+
+        resp = regform.submit().maybe_follow()
+        self.assert_logged_in(resp)
+        self.assert_notice(resp, r'Your new username is .*\bNew Username\b')
+
 
 def make_wsgi_app(trac_env):
     def app(environ, start_response):
@@ -244,6 +267,29 @@ class TempEnvironment(Environment):
     """
     dburi = 'sqlite:db/trac.db'
     project_name = 'TestEnvironment'
+
+    _singleton = None
+
+    @classmethod
+    def singleton(cls, options=(), **kwargs):
+        if cls._singleton is None:
+            cls._singleton = cls(**kwargs)
+            config = cls._singleton.config
+            shutil.copy(config.filename, config.filename + '.orig')
+        else:
+            config = cls._singleton.config
+            shutil.copy(config.filename + '.orig', config.filename)
+            config.parse_if_needed(force=True)
+
+        for section, key, value in options:
+            config.set(section, key, value)
+
+        env = modernize_env(cls._singleton)
+        with env.db_transaction as db:
+            db("DELETE FROM session")
+            db("DELETE FROM session_attribute")
+
+        return cls._singleton
 
     def __init__(self):
         self._rmtree = shutil.rmtree
