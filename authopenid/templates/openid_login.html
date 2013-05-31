@@ -1,0 +1,28 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/">
+
+  <xi:include href="layout.html" />
+  <xi:include py:if="selector_template" href="${selector_template}" />
+
+  <head>
+    <title>OpenID Login</title>
+  </head>
+  <body>
+    <form id="openid_form" method="post" accept-charset="UTF-8"
+          action="${href.openid('login')}">
+      <fieldset>
+        <legend>Sign in with OpenID</legend>
+        <div>
+          <label for="openid_identifier">OpenID</label>
+          <input type="text" name="openid_identifier" value=""
+                 class="openid_identifier" size="45"/>
+          <input type="submit" value="Sign-in" />
+        </div>
+      </fieldset>
+    </form>
+  </body>
+</html>

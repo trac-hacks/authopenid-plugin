@@ -67,12 +67,6 @@ class AuthOpenIdPlugin(Component):
     strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
             """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
 
-    signup_link = Option('openid', 'signup', 'http://openid.net/get/',
-            """Signup link""")
-
-    whatis_link = Option('openid', 'whatis', 'http://openid.net/what/',
-            """What is OpenId link.""")
-
 
     check_list = Option('openid', 'check_list', None,
             """JSON service for openid check.""")
@@ -82,27 +76,6 @@ class AuthOpenIdPlugin(Component):
 
     check_list_username = Option('openid', 'check_list_username', None,
             """Username for openid Service.""")
-
-    providers = ListOption('openid', 'providers', [],
-        doc="""Explicit set of providers to offer.
-
-        E.g: google, yahoo, ...""")
-
-    custom_provider_name = Option('openid', 'custom_provider_name', None,
-            """ Custom OpenId provider name. """)
-
-    custom_provider_label = Option('openid', 'custom_provider_label', 'Enter your username',
-            """ Custom OpenId provider label. """)
-
-    custom_provider_url = Option('openid', 'custom_provider_url', '',
-            """ Custom OpenId provider URL. E.g.: http://claimid.com/{username} """)
-
-    custom_provider_image = Option('openid', 'custom_provider_image', '',
-            """ Custom OpenId provider image. """)
-
-    custom_provider_size = ChoiceOption('openid', 'custom_provider_size',
-                                        ('small', 'large'),
-        doc=""" Custom OpenId provider image size (small or large).""")
 
 
     authorization_policies = OrderedExtensionsOption(
@@ -131,17 +104,6 @@ class AuthOpenIdPlugin(Component):
                 raise ConfigurationError(
                     '[%(section)s] %(entry)s: option no longer supported'
                     % dict(section=section, entry=entry))
-
-        self.template_data = {
-            'signup': self.signup_link,
-            'whatis': self.whatis_link,
-            'providers_regexp': '^(%s)$' % '|'.join(self.providers or ['.*']),
-            'custom_provider_name': self.custom_provider_name,
-            'custom_provider_label': self.custom_provider_label,
-            'custom_provider_url': self.custom_provider_url,
-            'custom_provider_image': self.custom_provider_image,
-            'custom_provider_size': self.custom_provider_size,
-            }
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):
@@ -194,11 +156,11 @@ class AuthOpenIdPlugin(Component):
             oid_identifier = self.default_openid
             immediate = False
         else:
-            return self._login_form(req)
+            return "openid_login.html", {}, None
 
         if not oid_identifier:
             chrome.add_warning(req, "Enter an OpenID identifier")
-            return self._login_form(req)
+            return "openid_login.html", {}, None
 
         return_to = req.abs_href.openid('response')
 
@@ -207,7 +169,7 @@ class AuthOpenIdPlugin(Component):
                 req, oid_identifier, return_to, immediate=immediate)
         except DiscoveryFailure as exc:
             chrome.add_warning(req, escape("Discovery failure: %s") % str(exc))
-            return self._login_form(req)
+            return "openid_login.html", {}, None
 
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
@@ -248,18 +210,6 @@ class AuthOpenIdPlugin(Component):
             # FIXME: better message
             raise NotAuthorized(
                     "No configured authorization policy matched")
-
-    def _login_form(self, req):
-        img_path = req.href.chrome('authopenid/images') + '/'
-
-        chrome.add_stylesheet(req, 'authopenid/css/openid.css')
-        chrome.add_script(req, 'authopenid/js/openid-jquery.js')
-        data = dict(self.template_data,
-                    action=req.href.openid('login'),
-                    images=img_path)
-
-        return 'openidlogin.html', data, None
-
 
     def get_session(self, req):
         """ This returns our own private session dict.
