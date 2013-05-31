@@ -1,13 +1,8 @@
 from __future__ import absolute_import
 
-from base64 import b64decode, b64encode
 from contextlib import contextmanager
 import sys
 from urlparse import urlparse, urlunparse
-try:
-    import cPickle as pickle
-except ImportError:                     # pragma: no cover
-    import pickle
 
 from trac.config import BoolOption, OrderedExtensionsOption
 from trac.core import implements, TracError
@@ -31,7 +26,7 @@ from authopenid.api import (
     IOpenIDConsumer,
     )
 from authopenid.compat import Component, TransactionContextManager
-from authopenid.util import get_db_scheme, table_exists
+from authopenid.util import get_db_scheme, PickleSession, table_exists
 
 # XXX: It looks like python-openid is going to switch to using the
 # stock logging module.  We'll need to detect when that happens.
@@ -51,48 +46,6 @@ def openid_logging_to(log):
         yield
     finally:
         oidutil.log = save_log
-
-def _session_mutator(method):
-    def wrapped(self, *args):
-        rv = method(self, *args)
-        self.save()
-        return rv
-    try:
-        wrapped.__name__ = method.__name__
-    except:                             # pragma: no cover
-        pass
-    return wrapped
-
-class PickleSession(dict):
-    """ A session dict that can store any kind of object.
-
-    (The trac req.session can only store ``unicode`` values.)
-    """
-
-    def __init__(self, req, skey):
-        self.req = req
-        self.skey = skey
-        try:
-            data = b64decode(req.session[self.skey])
-            self.update(pickle.loads(data))
-        except (KeyError, TypeError, pickle.UnpicklingError):
-            pass
-
-    def save(self):
-        session = self.req.session
-        if len(self) > 0:
-            data = pickle.dumps(dict(self), pickle.HIGHEST_PROTOCOL)
-            session[self.skey] = b64encode(data)
-        elif self.skey in session:
-            del session[self.skey]
-
-    __setitem__ = _session_mutator(dict.__setitem__)
-    __delitem__ = _session_mutator(dict.__delitem__)
-    clear = _session_mutator(dict.clear)
-    pop = _session_mutator(dict.pop)
-    popitem = _session_mutator(dict.popitem)
-    setdefault = _session_mutator(dict.setdefault)
-    update = _session_mutator(dict.update)
 
 class openid_store(object):
     """ Context manager for adapting trac db to python-openid store
@@ -192,10 +145,10 @@ class OpenIDConsumer(Component):
         if trust_root is None:
             trust_root = self._get_trust_root(req)
 
-        session = PickleSession(req, self.consumer_skey)
+        oid_session = PickleSession(req.session, self.consumer_skey)
         with openid_store(self.env) as store:
             with openid_logging_to(log):
-                consumer = self.consumer_class(session, store)
+                consumer = self.consumer_class(oid_session, store)
                 # NB: raises openid.consumer.discover.DiscoveryFailure
                 # FIXME: (and maybe ProtocolError?)
                 auth_request = consumer.begin(identifier)
@@ -219,14 +172,11 @@ class OpenIDConsumer(Component):
         if current_url is None:
             current_url = req.abs_href(req.path_info)
 
-        session = PickleSession(req, self.consumer_skey)
+        oid_session = PickleSession(req.session, self.consumer_skey)
         with openid_store(self.env) as store:
             with openid_logging_to(self.env.log):
-                consumer = self.consumer_class(session, store)
+                consumer = self.consumer_class(oid_session, store)
                 response = consumer.complete(req.args, current_url)
-
-                if response.status != SETUP_NEEDED:
-                    session.clear()
 
                 if response.status == FAILURE:
                     raise AuthenticationFailed(

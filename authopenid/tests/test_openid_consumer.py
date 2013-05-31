@@ -58,37 +58,6 @@ class Test_openid_logging_to(unittest.TestCase):
             hasattr(oidutil, 'logging'),
             msg="python-openid appears to have switch to using stock logging")
 
-class TestPickleSession(unittest.TestCase):
-
-    skey = 'skey'
-
-    def setUp(self):
-        self.req = Mock(name='Request')
-        self.req.session = dict()
-
-    def get_session(self):
-        from authopenid.openid_consumer import PickleSession
-        return PickleSession(self.req, self.skey)
-
-    def test_persistence(self):
-        session = self.get_session()
-        session['secret'] = 42
-        session = self.get_session()
-        self.assertEqual(session['secret'], 42)
-
-    def test_cleanup_when_empty(self):
-        session = self.get_session()
-        session['secret'] = 42
-        self.assertIn(self.skey, self.req.session)
-        session.clear()
-        self.assertNotIn(self.skey, self.req.session)
-
-    def test_does_not_puke_on_garbage(self):
-        self.req.session[self.skey] = (
-            "(dp0\nS'id'\np1\nS'44b6b53fc89710f6408b9733'\np2\ns.")
-        session = self.get_session()
-        self.assertEqual(session, {})
-
 
 class OIDConsumerTestMixin(object):
     BASE_URL = 'http://example.net/trac'

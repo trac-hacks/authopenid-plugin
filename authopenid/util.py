@@ -2,13 +2,64 @@
 """
 from __future__ import absolute_import
 
+from base64 import b64decode, b64encode
 from collections import MutableMapping
 from urlparse import urljoin, urlparse, urlunparse
+try:
+    import cPickle as pickle
+except ImportError:                     # pragma: no cover
+    import pickle
 
 from trac.core import TracError
 from trac.db.api import DatabaseManager
 
 from authopenid.compat import TransactionContextManager
+
+def _session_mutator(method):
+    def wrapped(self, *args):
+        rv = method(self, *args)
+        self.save()
+        return rv
+    try:
+        wrapped.__name__ = method.__name__
+    except:                             # pragma: no cover
+        pass
+    return wrapped
+
+class PickleSession(dict):
+    """ A session dict that can store any kind of object.
+
+    This is a dict which stores itself in pickled form in a single
+    key of the trac session.
+
+    (The trac req.session can only store ``unicode`` values.)
+    """
+
+    def __init__(self, sess, skey):
+        self.sess = sess
+        self.skey = skey
+        try:
+            data = b64decode(sess[self.skey])
+            self.update(pickle.loads(data))
+        except (KeyError, TypeError, pickle.UnpicklingError):
+            pass
+
+    def save(self):
+        if len(self) > 0:
+            data = pickle.dumps(dict(self), pickle.HIGHEST_PROTOCOL)
+            self.sess[self.skey] = b64encode(data)
+        elif self.skey in self.sess:
+            del self.sess[self.skey]
+
+    __setitem__ = _session_mutator(dict.__setitem__)
+    __delitem__ = _session_mutator(dict.__delitem__)
+    clear = _session_mutator(dict.clear)
+    pop = _session_mutator(dict.pop)
+    popitem = _session_mutator(dict.popitem)
+    setdefault = _session_mutator(dict.setdefault)
+    update = _session_mutator(dict.update)
+
+del _session_mutator
 
 def sanitize_referer(referer, base_url):
     """ Ensure that ``referer`` is 'under' ``base_url``.
