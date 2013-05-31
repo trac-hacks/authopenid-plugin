@@ -13,7 +13,7 @@ from __future__ import absolute_import
 
 from pkg_resources import resource_filename
 
-from trac.core import Component, implements, TracError
+from trac.core import Component, implements
 from trac.config import (
     BoolOption,
     ChoiceOption,
@@ -139,9 +139,6 @@ class AuthOpenIdPlugin(Component):
             'custom_provider_image': self.custom_provider_image,
             'custom_provider_size': self.custom_provider_size,
             }
-
-        if len(self.authorization_policies) == 0:
-            raise TracError("No OpenID authorization_policies are configured")
 
     # INavigationContributor methods
     def get_active_navigation_item(self, req):

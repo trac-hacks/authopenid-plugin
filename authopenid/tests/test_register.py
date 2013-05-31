@@ -7,7 +7,7 @@ if sys.version_info >= (2, 7):
 else:
     import unittest2 as unittest
 
-from mock import Mock, patch
+from mock import Mock
 import webob
 
 from trac.test import EnvironmentStub
@@ -19,7 +19,6 @@ from authopenid.api import FULL_NAME, OpenIDIdentifier
 
 class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
     def setUp(self):
-        from authopenid.authopenid import AuthOpenIdPlugin
         # make sure the identifier, and UserLogin are available
         from authopenid import identifier_store, userlogin ; 'SIDE-EFFECTS'
 
@@ -29,13 +28,6 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
             'authopenid.userlogin.*',
             ])
         #assert self.env.dburi == 'sqlite::memory:'
-
-        # Instantiate the AuthOpenIdPlugin.
-        dummy_authz_policy = Mock()
-        # Prevent "No OpenID authorization_polices are configured" error.
-        with patch.object(AuthOpenIdPlugin, 'authorization_policies',
-                          [dummy_authz_policy]):
-            AuthOpenIdPlugin(self.env)
 
         self.req = MockRequest()
         Chrome(self.env).prepare_request(self.req)
