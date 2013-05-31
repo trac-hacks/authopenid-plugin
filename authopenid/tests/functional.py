@@ -41,6 +41,7 @@ from openid.server.server import Server as openid_Server
 from openid.store.memstore import MemoryStore
 from openid.extensions import ax
 
+from trac.config import Configuration
 from trac.env import Environment
 from trac.web.main import dispatch_request
 from trac.wiki.admin import WikiAdmin
@@ -94,7 +95,6 @@ class FunctionalTests(unittest.TestCase):
 
         self.truncate_log_file()
         the_app = make_wsgi_app(self.env)
-        the_app = webtest.lint.middleware(the_app)
         self.app = TestApp(the_app)
 
     def truncate_log_file(self):
@@ -212,15 +212,15 @@ class FunctionalTests(unittest.TestCase):
         self.assert_logged_out(resp)
 
     @print_log_on_failure
-    @unittest.expectedFailure
     def test_login_unauthorized(self):
         identifier = self.op.get_identifier('unauthorized')
-        self.env.config.set('openid', 'blacklist', identifier)
+        self.env.config.set('openid', 'black_list', identifier)
         self.env.config.save()
 
         resp = self.do_login(identifier)
-        #import pdb; pdb.set_trace()
         self.assert_logged_out(resp)
+        self.assertEqual(resp.request.path_info, '/openid/response')
+        self.assert_warning(resp, r'(?i)Not\s*Authorized')
 
     @print_log_on_failure
     def test_interactive_registration(self):
@@ -279,10 +279,11 @@ class TempEnvironment(Environment):
         else:
             config = cls._singleton.config
             shutil.copy(config.filename + '.orig', config.filename)
-            config.parse_if_needed(force=True)
 
+        cls._singleton.config = Configuration(config.filename)
         for section, key, value in options:
             config.set(section, key, value)
+        config.save()
 
         env = modernize_env(cls._singleton)
         with env.db_transaction as db:
