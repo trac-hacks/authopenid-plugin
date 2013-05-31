@@ -144,7 +144,7 @@ class FunctionalTests(unittest.TestCase):
         self.assert_chrome_message(resp, text, 'warning')
 
     def submit_login_form(self, openid_identifier):
-        resp = self.app.get('/openid/login')
+        resp = self.app.get('/').click(href='/openid/login')
         self.assertEqual(resp.status_int, 200)
 
         for form in set(resp.forms.values()):
