@@ -68,11 +68,16 @@ class RegistrationModuleBase(Component):
         if not re.match(r'\A(?!\s)[-=\w\d@\. ()]+(?!<\s)\Z', username):
             raise InvalidUsername(username, "invalid characters in username")
 
+    def _is_valid_username(self, username):
+        try:
+            self._check_username(username)
+        except InvalidUsername:
+            return False
+        return True
+
     def _validate_username(self, req, username):
-        # FIXME: unify with OpenIDIdentifierStore._maybe_lowercase_username
-        username = username.strip() if username else ''
-        if self.config.getbool('trac', 'ignore_auth_case'):
-            username = username.lower()
+        username = self._maybe_lowercase_username(
+            username.strip() if username else '')
         try:
             self._check_username(username)
         except InvalidUsername as exc:
@@ -100,10 +105,16 @@ class RegistrationModuleBase(Component):
         seen = set()
         for key in FULL_NAME, NICKNAME, EMAIL_ADDRESS:
             for value in openid_identifier.signed_data.getall(key):
-                value = value.strip()
+                value = self._maybe_lowercase_username(value.strip())
                 if value and value not in seen:
                     seen.add(value)
                     yield value
+
+    # FIXME: unify with the same method in OpenIDIdentifierStore
+    def _maybe_lowercase_username(self, username):
+        if self.config.getbool('trac', 'ignore_auth_case'):
+            return username.lower()
+        return username
 
     # Move this somewhere else (it might be more generally useful)?
     def _create_user(self, username, openid_identifier=None,  user_attr=None):
@@ -154,10 +165,9 @@ class OpenIDInteractiveRegistrationModule(RegistrationModuleBase):
         oid_session = AuthOpenIdPlugin(self.env).get_session(req)
         oid_session['register.identifier'] = openid_identifier
 
-        try:
-            username = next(self._preferred_usernames(openid_identifier))
-        except StopIteration:
-            username = ''
+        candidates = filter(self._is_valid_username,
+                            self._preferred_usernames(openid_identifier))
+        username = candidates[0] if candidates else ''
         user_attr = dict(self._get_user_attributes(openid_identifier))
 
         return self._register_form(req, username, user_attr)
@@ -218,7 +228,7 @@ class OpenIDInteractiveRegistrationModule(RegistrationModuleBase):
         return 'openid_register.html', data, None
 
 
-class OpenIDLegacyRegistrationModule(Component):
+class OpenIDLegacyRegistrationModule(RegistrationModuleBase):
     """ Handles new user registration for OpenID-authenticated users.
 
     This does this more-or-less in the style of version 0.4 of
@@ -279,32 +289,30 @@ class OpenIDLegacyRegistrationModule(Component):
         identifier_store = AuthOpenIdPlugin(self.env).identifier_store
         user_login = AuthOpenIdPlugin(self.env).user_login
 
-        username = None
-        for username in self._valid_usernames(req, openid_identifier):
-            with self.env.db_transaction as db:
-                user = DetachedSession(self.env, username)
-                if not user._new:
-                    continue            # user exists
+        candidates = list(self._preferred_usernames(openid_identifier))
+        if not candidates:
+            candidates = [str(openid_identifier)]
+        for username in list(candidates):
+            if not self._is_valid_username(username + ' (1)'):
+                self.log.warning("%r is not a valid username", username)
+                candidates.remove(username)
 
-                user.update(self._get_user_attributes(openid_identifier))
-                if len(user) > 0:
-                    user.save()
-                else:
-                    # user.save won't create a new user with no data
-                    db("INSERT INTO session"
-                       " (sid, authenticated, last_visit)"
-                       " VALUES (%s, 1, 0)", (username,))
+        user_attr = dict(self._get_user_attributes(openid_identifier))
 
-                identifier_store.add_identifier(username, openid_identifier)
+        for username in self._possible_usernames(candidates):
+            try:
+                self._create_user(username, openid_identifier, user_attr)
                 break
+            except UserExists:
+                continue
         else:
-            # FIXME: cleanup
             if username:
-                msg = "A user already exists with username %r" % username
+                msg = escape("A user already exists with username %r"
+                             ) % tag.code(username)
             else:
                 msg = "Could not deduce a valid username"
-            chrome.add_warning(
-                req, escape("Can not complete registration: %s") % msg)
+            chrome.add_warning(req, escape("Can not complete registration: %s"
+                                           ) % msg)
             req.redirect(req.href.openid('login'))
 
         chrome.add_notice(req, escape(
@@ -313,70 +321,12 @@ class OpenIDLegacyRegistrationModule(Component):
         start_page = AuthOpenIdPlugin(self.env).get_start_page(req)
         user_login.login(req, username, start_page)
 
-    def _validate_username(self, req, username):
-        # FIXME: ':' not being a valid character means identifier URLs
-        # are not allowed?
-        #
-        #  (This list gleaned from the TracAccountManager plugin.)
-        #   - No ':', '[', ']'
-        #   - No all upper case (those are permissions)
-        #   - username.lower() not in ('anonymous', 'authenticated')
-        #   - do a case-insenstive check against existing usernames
-        #     - also consider any static lists of potential usernames
-        # FIXME: make this more lenient/configurable (is unicode allowed?)
-        return (
-            re.match(r'\A(?!\s)[-=\w\d@\. ()]+(?!<\s)\Z', username)
-            and not username.isupper()
-            and username.lower() not in ('anonymous', 'authenticated')
-            )
-
-    def _valid_usernames(self, req, openid_identifier):
-        seen = set()
-        for username in self._possible_usernames(openid_identifier):
-            username = self._maybe_lowercase_username(username)
-            if username in seen:
-                continue
-            seen.add(username)
-            if not self._validate_username(req, username):
-                # FIXME: better message(s))
-                chrome.add_warning(req, "%r is not a valid username" % username)
-                continue
-            yield username
-
-    def _possible_usernames(self, openid_identifier):
-        preferred = tuple(self._preferred_usernames(openid_identifier))
-        for username in preferred:
-            yield username
+    def _possible_usernames(self, candidates):
+        for username in candidates:
+            if self._is_valid_username(username):
+                yield username
         for n in range(2, 1000):
-            for username in preferred:
-                yield "%s (%d)" % (username, n)
-
-    def _preferred_usernames(self, openid_identifier):
-        # FIXME: configuration
-
-        seen = set()
-        for key in FULL_NAME, NICKNAME, EMAIL_ADDRESS:
-            for value in openid_identifier.signed_data.getall(key):
-                value = value.strip()
-                if value and value not in seen:
-                    seen.add(value)
-                    yield value
-        if len(seen) == 0:
-            # punt
-            yield str(openid_identifier)
-
-    # FIXME: unify with the same method in OpenIDIdentifierStore
-    def _maybe_lowercase_username(self, username):
-        if self.config.getbool('trac', 'ignore_auth_case'):
-            return username.lower()
-        return username
-
-    def _get_user_attributes(self, openid_identifier):
-        signed_data = openid_identifier.signed_data
-        for akey, dkey in [('name', FULL_NAME), ('email', EMAIL_ADDRESS)]:
-            try:
-                value = next(v.strip() for v in signed_data.getall(dkey)
-                             if v.strip())
-            except StopIteration:
-                continue
-            yield akey, value
+            for u in candidates:
+                username = "%s (%d)" % (u, n)
+                assert self._is_valid_username(username)
+                yield username
