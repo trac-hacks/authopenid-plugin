@@ -240,8 +240,8 @@ class FunctionalTests(unittest.TestCase):
         resp = self.app.get('/').click(href='/openid/login')
         resp = self.submit_authentication_form(resp, identifier)
         self.assert_logged_out(resp)
-        self.assertEqual(resp.request.path_info, '/openid/response')
         self.assert_warning(resp, r'(?i)Not\s*Authorized')
+        self.assertEqual(resp.request.path_info, '/openid/login')
 
     @print_log_on_failure
     def test_interactive_registration(self):

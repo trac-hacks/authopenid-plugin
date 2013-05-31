@@ -218,14 +218,14 @@ class AuthOpenIdPlugin(Component):
             identifier = self.openid_consumer.complete(req)
         except NegativeAssertion as exc:
             chrome.add_warning(req, exc)
-            return self._login_form(req)
+            return req.redirect(req.href.openid('login'))
 
         # FIXME: should authz checks be performed only for new accounts?
         try:
             self._check_authorization(req, identifier)
         except NotAuthorized as exc:
             chrome.add_warning(req, exc)
-            return self._login_form(req)
+            return req.redirect(req.href.openid('login'))
 
         username = self.identifier_store.get_user(identifier)
         # XXX: update name/email if account already exists?
