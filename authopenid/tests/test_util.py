@@ -5,8 +5,6 @@ import unittest
 if not hasattr(unittest, 'skip'):
     import unittest2 as unittest
 
-from mock import Mock
-
 from trac.core import TracError
 from trac import db_default
 from trac.test import EnvironmentStub
