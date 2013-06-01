@@ -6,9 +6,8 @@
 */
 
 var providers;
-var openid;
-(function ($) {
-openid = {
+
+var openid = {
 	version : '1.3', // version constant
 	demo : false,
 	demo_text : null,
@@ -35,26 +34,26 @@ openid = {
 	 * @return {Void}
 	 */
 	init : function(input_id) {
-		providers = $.extend({}, providers_large, providers_small);
-		var openid_btns = $('#openid_btns');
+		providers = $merge(providers_large, providers_small);
+		var openid_btns = $('openid_btns');
 		this.input_id = input_id;
-		$('#openid_choice').show();
-		$('#openid_input_area').empty();
+		$('openid_choice').setStyle('display', 'block');
+		$('openid_input_area').empty();
 		var i = 0;
 		// add box for each provider
 		var id, box;
 		for (id in providers_large) {
 			box = this.getBoxHTML(id, providers_large[id], (this.all_small ? 'small' : 'large'), i++);
-			openid_btns.append(box);
+			box.inject(openid_btns);
 		}
 		if (providers_small) {
-			openid_btns.append('<br/>');
+			openid_btns.grab(new Element('br'));
 			for (id in providers_small) {
 				box = this.getBoxHTML(id, providers_small[id], 'small', i++);
-				openid_btns.append(box);
+				box.inject(openid_btns);
 			}
 		}
-		$('#openid_form').submit(this.submit);
+		$('openid_form').addEvent('submit', this.submit);
 		var box_id = this.readCookie();
 		if (box_id) {
 			this.signin(box_id, true);
@@ -62,20 +61,34 @@ openid = {
 	},
 
 	/**
-	 * @return {String}
+	 * @return {Element}
 	 */
 	getBoxHTML : function(box_id, provider, box_size, index) {
 		if (this.no_sprite) {
 			var image_ext = box_size == 'small' ? '.ico.gif' : '.gif';
-			return '<a title="' + this.image_title.replace('{provider}', provider.name) + '" href="javascript:openid.signin(\'' + box_id + '\');"'
-					+ ' style="background: #FFF url(' + this.img_path + '../images.' + box_size + '/' + box_id + image_ext + ') no-repeat center center" '
-					+ 'class="' + box_id + ' openid_' + box_size + '_btn"></a>';
+			return new Element('a', {
+				'href' : "javascript:openid.signin('" + box_id + "');",
+				'title' : this.image_title.replace('{provider}', provider.name),
+				'class' : box_id + ' openid_' + box_size + '_btn',
+				'styles' : {
+					'display' : 'block',
+					'background' : '#FFF url(' + this.img_path + '../images.' + box_size + '/' + box_id + image_ext
+							+ ') no-repeat center center'
+				}
+			});
 		}
 		var x = box_size == 'small' ? -index * 24 : -index * 100;
 		var y = box_size == 'small' ? -60 : 0;
-		return '<a title="' + this.image_title.replace('{provider}', provider.name) + '" href="javascript:openid.signin(\'' + box_id + '\');"'
-				+ ' style="background: #FFF url(' + this.img_path + 'openid-providers-' + this.sprite + '.png); background-position: ' + x + 'px ' + y + 'px" '
-				+ 'class="' + box_id + ' openid_' + box_size + '_btn"></a>';
+		return new Element('a', {
+			'href' : "javascript:openid.signin('" + box_id + "');",
+			'title' : this.image_title.replace('{provider}', provider.name),
+			'class' : box_id + ' openid_' + box_size + '_btn',
+			'styles' : {
+				'background' : '#FFF url(' + this.img_path + 'openid-providers-' + this.sprite + '.png'
+						+ ') no-repeat center center',
+				'background-position' : x + 'px ' + y + 'px'
+			}
+		});
 	},
 
 	/**
@@ -96,9 +109,9 @@ openid = {
 		if (provider.label) {
 			this.useInputBox(provider);
 		} else {
-			$('#openid_input_area').empty();
+			$('openid_input_area').empty();
 			if (!onload) {
-				$('#openid_form').submit();
+				$('openid_form_submit').click(); //$('openid_form').submit();
 			}
 		}
 	},
@@ -111,7 +124,8 @@ openid = {
 	submit : function() {
 		var url = openid.provider_url;
 		if (url) {
-			url = url.replace('{username}', $('#openid_username').val());
+			if ($('openid_username'))
+				url = url.replace('{username}', $('openid_username').get('value'));
 			openid.setOpenIdUrl(url);
 		}
 		if (openid.demo) {
@@ -130,11 +144,16 @@ openid = {
 	 * @return {Void}
 	 */
 	setOpenIdUrl : function(url) {
-		var hidden = document.getElementById(this.input_id);
-		if (hidden != null) {
-			hidden.value = url;
+		var hidden = $(this.input_id);
+		if (hidden) {
+			hidden.set('value', url);
 		} else {
-			$('#openid_form').append('<input type="hidden" id="' + this.input_id + '" name="' + this.input_id + '" value="' + url + '"/>');
+			$('openid_form').grab(new Element('input', {
+				'type' : 'hidden',
+				'id' : this.input_id,
+				'name' : this.input_id,
+				'value' : url
+			}));
 		}
 	},
 
@@ -143,39 +162,32 @@ openid = {
 	 */
 	highlight : function(box_id) {
 		// remove previous highlight.
-		var highlight = $('#openid_highlight');
+		var highlight = $('openid_highlight');
 		if (highlight) {
-			highlight.replaceWith($('#openid_highlight a')[0]);
+			$('openid_highlight').getFirst('a').replaces(highlight);
 		}
 		// add new highlight.
-		$('.' + box_id).wrap('<div id="openid_highlight"></div>');
+		new Element('div', {
+			'id' : 'openid_highlight'
+		}).wraps($$('.' + box_id)[0]);
 	},
 
 	setCookie : function(value) {
-		var date = new Date();
-		date.setTime(date.getTime() + (this.cookie_expires * 24 * 60 * 60 * 1000));
-		var expires = "; expires=" + date.toGMTString();
-		document.cookie = this.cookie_name + "=" + value + expires + "; path=" + this.cookie_path;
+		Cookie.write(this.cookie_name, value, {
+			duration : this.cookie_expires,
+			path : this.cookie_path
+		});
 	},
 
 	readCookie : function() {
-		var nameEQ = this.cookie_name + "=";
-		var ca = document.cookie.split(';');
-		for ( var i = 0; i < ca.length; i++) {
-			var c = ca[i];
-			while (c.charAt(0) == ' ')
-				c = c.substring(1, c.length);
-			if (c.indexOf(nameEQ) == 0)
-				return c.substring(nameEQ.length, c.length);
-		}
-		return null;
+		return Cookie.read(this.cookie_name);
 	},
 
 	/**
 	 * @return {Void}
 	 */
 	useInputBox : function(provider) {
-		var input_area = $('#openid_input_area');
+		var input_area = $('openid_input_area');
 		var html = '';
 		var id = 'openid_username';
 		var value = '';
@@ -192,12 +204,11 @@ openid = {
 		html += '<input id="' + id + '" type="text" style="' + style + '" name="' + id + '" value="' + value + '" />'
 				+ '<input id="openid_submit" type="submit" value="' + this.signin_text + '"/>';
 		input_area.empty();
-		input_area.append(html);
-		$('#' + id).focus();
+		input_area.set('html', html);
+		$(id).focus();
 	},
 
 	setDemoMode : function(demoMode) {
 		this.demo = demoMode;
 	}
 };
-})(jQuery);

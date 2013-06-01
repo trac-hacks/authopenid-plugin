@@ -6,9 +6,8 @@
 */
 
 var providers;
-var openid;
-(function ($) {
-openid = {
+
+var openid = {
 	version : '1.3', // version constant
 	demo : false,
 	demo_text : null,
@@ -35,26 +34,30 @@ openid = {
 	 * @return {Void}
 	 */
 	init : function(input_id) {
-		providers = $.extend({}, providers_large, providers_small);
-		var openid_btns = $('#openid_btns');
+		providers = {};
+		Object.extend(providers, providers_large);
+		Object.extend(providers, providers_small);
+		var openid_btns = $('openid_btns');
 		this.input_id = input_id;
-		$('#openid_choice').show();
-		$('#openid_input_area').empty();
+		$('openid_choice').setStyle({
+			display: 'block'
+		});
+		$('openid_input_area').innerHTML = "";
 		var i = 0;
 		// add box for each provider
 		var id, box;
 		for (id in providers_large) {
 			box = this.getBoxHTML(id, providers_large[id], (this.all_small ? 'small' : 'large'), i++);
-			openid_btns.append(box);
+			openid_btns.insert(box);
 		}
 		if (providers_small) {
-			openid_btns.append('<br/>');
+			openid_btns.insert('<br/>');
 			for (id in providers_small) {
 				box = this.getBoxHTML(id, providers_small[id], 'small', i++);
-				openid_btns.append(box);
+				openid_btns.insert(box);
 			}
 		}
-		$('#openid_form').submit(this.submit);
+		$('openid_form').onsubmit = this.submit;
 		var box_id = this.readCookie();
 		if (box_id) {
 			this.signin(box_id, true);
@@ -96,9 +99,11 @@ openid = {
 		if (provider.label) {
 			this.useInputBox(provider);
 		} else {
-			$('#openid_input_area').empty();
+			$('openid_input_area').innerHTML = '';
 			if (!onload) {
-				$('#openid_form').submit();
+				if (this.submit()) {
+					$('openid_form').submit();
+				}
 			}
 		}
 	},
@@ -110,8 +115,10 @@ openid = {
 	 */
 	submit : function() {
 		var url = openid.provider_url;
+		var username_field = $('openid_username');
+		var username = username_field ? $('openid_username').value : '';
 		if (url) {
-			url = url.replace('{username}', $('#openid_username').val());
+			url = url.replace('{username}', username);
 			openid.setOpenIdUrl(url);
 		}
 		if (openid.demo) {
@@ -134,7 +141,7 @@ openid = {
 		if (hidden != null) {
 			hidden.value = url;
 		} else {
-			$('#openid_form').append('<input type="hidden" id="' + this.input_id + '" name="' + this.input_id + '" value="' + url + '"/>');
+			$('openid_form').insert('<input type="hidden" id="' + this.input_id + '" name="' + this.input_id + '" value="' + url + '"/>');
 		}
 	},
 
@@ -143,12 +150,17 @@ openid = {
 	 */
 	highlight : function(box_id) {
 		// remove previous highlight.
-		var highlight = $('#openid_highlight');
+		var highlight = $('openid_highlight');
 		if (highlight) {
-			highlight.replaceWith($('#openid_highlight a')[0]);
+			var fc = highlight.firstChild;
+			highlight.parentNode.replaceChild(fc, highlight);
 		}
 		// add new highlight.
-		$('.' + box_id).wrap('<div id="openid_highlight"></div>');
+		var box = $$('.' + box_id)[0];
+		var wrapper = document.createElement('div');
+		wrapper.id = 'openid_highlight';
+		box.parentNode.replaceChild(wrapper, box);
+		wrapper.appendChild(box);
 	},
 
 	setCookie : function(value) {
@@ -175,7 +187,7 @@ openid = {
 	 * @return {Void}
 	 */
 	useInputBox : function(provider) {
-		var input_area = $('#openid_input_area');
+		var input_area = $('openid_input_area');
 		var html = '';
 		var id = 'openid_username';
 		var value = '';
@@ -191,13 +203,12 @@ openid = {
 		}
 		html += '<input id="' + id + '" type="text" style="' + style + '" name="' + id + '" value="' + value + '" />'
 				+ '<input id="openid_submit" type="submit" value="' + this.signin_text + '"/>';
-		input_area.empty();
-		input_area.append(html);
-		$('#' + id).focus();
+		input_area.innerHTML = html;
+		$('openid_submit').onclick = this.submit;
+		$(id).focus();
 	},
 
 	setDemoMode : function(demoMode) {
 		this.demo = demoMode;
 	}
 };
-})(jQuery);
