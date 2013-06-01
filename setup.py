@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 import sys
 import warnings
@@ -64,14 +64,18 @@ setup(
     url='https://github.com/dairiki/authopenid-plugin/',
     license='Trac license (BSD-like)',
 
-    packages=['authopenid'],
+    packages=find_packages(),
+
+    # NB: this doesn't include the data files when building sdists
     package_data={
         'authopenid': [
             'templates/*.html',
-            'htdocs/css/*.css',
-            'htdocs/images/*.gif',
-            'htdocs/images/*.ico',
-            'htdocs/js/*.js'
+            'htdocs/openid-selector/css/*.css',
+            'htdocs/openid-selector/images/*.gif',
+            'htdocs/openid-selector/images/*.png',
+            'htdocs/openid-selector/js/openid-jquery.js',
+            'htdocs/openid-selector/js/openid-??.js',
+            'htdocs/openid-selector/js/openid-??_??.js',
             ],
         },
 

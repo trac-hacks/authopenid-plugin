@@ -2,5 +2,9 @@ include LICENSE.txt
 include README.rst
 include CHANGES.rst
 exclude .gitignore
-recursive-include authopenid/htdocs *.css *.gif *.ico *.js
-recursive-include authopenid/templates *.html
+recursive-include authopenid/htdocs *.css *.gif *.png openid-??.js
+include authopenid/htdocs/openid-selector/js/openid-jquery.js
+include authopenid/htdocs/openid-selector/js/openid-??.js
+include authopenid/htdocs/openid-selector/js/openid-??_??.js
+prune authopenid/htdocs/openid-selector/images.large
+prune authopenid/htdocs/openid-selector/images.small

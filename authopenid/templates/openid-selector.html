@@ -6,26 +6,12 @@
       xmlns:py="http://genshi.edgewall.org/">
 
   <head>
-    <link rel="stylesheet" type="text/css"
-          href='${href.chrome("authopenid/css/openid.css")}'/>
-    <script type="text/javascript" charset="utf-8"
-            src='${href.chrome("authopenid/js/openid-jquery.js")}'></script>
     <script type="text/javascript">
       $(document).ready(function() {
-      <py:if test="custom_provider_name and custom_provider_url
-                   and custom_provider_image">
-        providers_${custom_provider_size}.${custom_provider_name} = {
-        name: "${custom_provider_name}",
-        label: "${custom_provider_label}",
-        url: "${custom_provider_url}",
-        image: "${custom_provider_image}"
-        }
-        providers.${custom_provider_name}
-            = providers_${custom_provider_size}.${custom_provider_name};
-      </py:if>
-      openid.filterProviders(new RegExp("${providers_regexp}"));
-      openid.img_path = "${images}";
-      openid.init("openid_identifier");
+        $.extend(true, openid, openid_config);
+        $.extend(providers_large, openid_config.providers_large);
+        $.extend(providers_small, openid_config.providers_small);
+        openid.init("openid_identifier");
       });
     </script>
   </head>
