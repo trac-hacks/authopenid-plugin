@@ -37,16 +37,16 @@ var providers_small = {
 		label : 'Bitte den LiveJournal Benutzernamen eingeben.',
 		url : 'http://{username}.livejournal.com/'
 	},
-	/* flickr: {
+	flickr: {
 		name: 'Flickr',        
 		label: 'Bitte den Flickr Benutzernamen eingeben.',
 		url: 'http://flickr.com/{username}/'
-	}, */
-	/* technorati: {
+	},
+	technorati: {
 		name: 'Technorati',
 		label: 'Bitte den Technorati Benutzernamen eingeben.',
 		url: 'http://technorati.com/people/technorati/{username}/'
-	}, */
+	},
 	wordpress : {
 		name : 'Wordpress',
 		label : 'Bitte den Wordpress.com Benutzernamen eingeben.',
@@ -62,16 +62,16 @@ var providers_small = {
 		label : 'Ihr Verisign Benutzername',
 		url : 'http://{username}.pip.verisignlabs.com/'
 	},
-	/* vidoop: {
+	vidoop: {
 		name: 'Vidoop',
 		label: 'Ihr Vidoop Benutzername',
 		url: 'http://{username}.myvidoop.com/'
-	}, */
-	/* launchpad: {
+	},
+	launchpad: {
 		name: 'Launchpad',
 		label: 'Ihr Launchpad Benutzername',
 		url: 'https://launchpad.net/~{username}'
-	}, */
+	},
 	claimid : {
 		name : 'ClaimID',
 		label : 'Ihr ClaimID Benutzername',

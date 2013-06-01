@@ -37,16 +37,16 @@ var providers_small = {
 		label : '輸入您Livejournal的用戶名稱.',
 		url : 'http://{username}.livejournal.com/'
 	},
-	/* flickr: {
+	flickr: {
 		name: 'Flickr',        
 		label: '輸入您Flickr的用戶名稱.',
 		url: 'http://flickr.com/{username}/'
-	}, */
-	/* technorati: {
+	},
+	technorati: {
 		name: 'Technorati',
 		label: '的用戶名稱Technorati的用戶名稱.',
 		url: 'http://technorati.com/people/technorati/{username}/'
-	}, */
+	},
 	wordpress : {
 		name : 'Wordpress',
 		label : '輸入您Wordpress.com username.',
@@ -62,16 +62,16 @@ var providers_small = {
 		label : '您Verisign的用戶名稱 ',
 		url : 'http://{username}.pip.verisignlabs.com/'
 	},
-	/* vidoop: {
+	vidoop: {
 		name: 'Vidoop',
 		label: '您Vidoop的用戶名稱',
 		url: 'http://{username}.myvidoop.com/'
-	}, */
-	/* launchpad: {
+	},
+	launchpad: {
 		name: 'Launchpad',
 		label: '您Launchpad的用戶名稱',
 		url: 'https://launchpad.net/~{username}'
-	}, */
+	},
 	claimid : {
 		name : 'ClaimID',
 		label : '您ClaimID的用戶名稱',

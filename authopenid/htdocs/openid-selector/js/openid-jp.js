@@ -37,16 +37,16 @@ var providers_small = {
 		label : 'LiveJournalのユーザーネームを記入してください。',
 		url : 'http://{username}.livejournal.com/'
 	},
-	/* flickr: {
+	flickr: {
 		name: 'Flickr',        
 		label: 'Flickrのユーザーネームを記入してください。',
 		url: 'http://flickr.com/{username}/'
-	}, */
-	/* technorati: {
+	},
+	technorati: {
 		name: 'Technorati',
 		label: 'Technoratiのユーザーネームを記入してください。',
 		url: 'http://technorati.com/people/technorati/{username}/'
-	}, */
+	},
 	wordpress : {
 		name : 'Wordpress',
 		label : 'Wordpress.comのユーザーネームを記入してください。',
@@ -62,16 +62,16 @@ var providers_small = {
 		label : 'Verisignのユーザーネームを記入してください。',
 		url : 'http://{username}.pip.verisignlabs.com/'
 	},
-	/* vidoop: {
+	vidoop: {
 		name: 'Vidoop',
 		label: 'Vidoopのユーザーネームを記入してください。',
 		url: 'http://{username}.myvidoop.com/'
-	}, */
-	/* launchpad: {
+	},
+	launchpad: {
 		name: 'Launchpad',
 		label: 'Launchpadのユーザーネームを記入してください。',
 		url: 'https://launchpad.net/~{username}'
-	}, */
+	},
 	claimid : {
 		name : 'ClaimID',
 		label : 'ClaimIDのユーザーネームを記入してください。',
