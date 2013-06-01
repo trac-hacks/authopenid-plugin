@@ -38,6 +38,7 @@ from authopenid.api import (
     IOpenIDIdentifierStore,
     IOpenIDUserRegistration,
     IOpenIDConsumer,
+    IOpenIDFancySelector,
     IUserLogin,
     )
 from authopenid.util import PickleSession, sanitize_referer
@@ -81,6 +82,10 @@ class AuthOpenIdPlugin(Component):
     authorization_policies = OrderedExtensionsOption(
         'openid', 'authorization_policies', IOpenIDAuthorizationPolicy)
 
+    fancy_selector = ExtensionOption(
+        'openid', 'fancy_selector', IOpenIDFancySelector,
+        default='OpenIDSelector')
+
     identifier_store = ExtensionOption(
         'openid', 'identifier_store', IOpenIDIdentifierStore,
         default='OpenIDIdentifierStore')
@@ -95,6 +100,7 @@ class AuthOpenIdPlugin(Component):
     openid_consumer = ExtensionOption(
         'openid', 'openid_consumer', IOpenIDConsumer,
         default='OpenIDConsumer')
+
 
     def __init__(self):
         config = self.config
@@ -156,11 +162,11 @@ class AuthOpenIdPlugin(Component):
             oid_identifier = self.default_openid
             immediate = False
         else:
-            return "openid_login.html", {}, None
+            return self._login_form(req)
 
         if not oid_identifier:
             chrome.add_warning(req, "Enter an OpenID identifier")
-            return "openid_login.html", {}, None
+            return self._login_form(req)
 
         return_to = req.abs_href.openid('response')
 
@@ -169,7 +175,7 @@ class AuthOpenIdPlugin(Component):
                 req, oid_identifier, return_to, immediate=immediate)
         except DiscoveryFailure as exc:
             chrome.add_warning(req, escape("Discovery failure: %s") % str(exc))
-            return "openid_login.html", {}, None
+            return self._login_form(req)
 
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
@@ -243,3 +249,9 @@ class AuthOpenIdPlugin(Component):
             # don't redirect back to any of our pages
             return self.env.abs_href()
         return start_page
+
+    def _login_form(self, req):
+        data = {}
+        if self.fancy_selector:
+            data['selector'] = self.fancy_selector.get_template_data(req)
+        return "openid_login.html", data, None

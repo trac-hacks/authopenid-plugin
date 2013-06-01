@@ -5,16 +5,18 @@
 """
 from __future__ import absolute_import
 
-from genshi.core import Stream
-from genshi.filters.transform import Transformer
+try:
+    import json
+except ImportError:                     # pragma: no cover
+    import simplejson as json           # python < 2.6
 
 from trac.core import Component, implements
 from trac.config import ChoiceOption, ListOption, Option
-from trac.web.api import ITemplateStreamFilter
-from trac.web.chrome import add_script, add_script_data, add_stylesheet, Chrome
+
+from authopenid.api import IOpenIDFancySelector
 
 class OpenIDSelector(Component):
-    implements(ITemplateStreamFilter)
+    implements(IOpenIDFancySelector)
 
     signup_link = Option(
         'openid', 'signup', 'http://openid.net/get/',
@@ -50,13 +52,13 @@ class OpenIDSelector(Component):
         'openid', 'custom_provider_size', ('small', 'large'),
         doc=""" Custom OpenId provider image size (small or large).""")
 
-    def __init__(self):
-        self.template_data = {
-            'signup': self.signup_link,
-            'whatis': self.whatis_link,
-            }
-        self.openid_config = {
-            'show_providers': [ p.lower() for p in self.show_providers ],
+    def get_template_data(self, req):
+        js_config = {
+            'openid': {
+                'show_providers': [ p.lower() for p in self.show_providers ],
+                'img_path': req.href.chrome('authopenid/openid-selector/images'
+                                            ) + '/',
+                },
             }
         provider = {
             'size': self.custom_provider_size,
@@ -68,37 +70,11 @@ class OpenIDSelector(Component):
         if all(provider[k] for k in ('size', 'name', 'image', 'url')):
             key = 'providers_%s' % provider['size']
             pid = provider['name'].lower()
-            self.openid_config[key] = {pid: provider}
+            js_config[key] = {pid: provider}
 
-    def filter_stream(self, req, method, filename, stream, data):
-        if filename.startswith('openid') \
-               and not 'openid.selector_done' in data:
-            openid_config=dict(
-                self.openid_config,
-                img_path=req.href.chrome('authopenid/openid-selector/images'
-                                         ) + '/')
-            # nb: trac 0.12 doesn't support keyword args to add_script_data()
-            add_script_data(req, {'openid_config': openid_config})
-
-            # XXX: could also user openid-shadow.css here
-            add_stylesheet(req, 'authopenid/openid-selector/css/openid.css')
-            add_script(req, 'authopenid/openid-selector/js/openid-jquery.js')
-            add_script(req, 'authopenid/openid-selector/js/openid-en.js')
-
-            tmpl_data = self.template_data.copy()
-            tmpl_data.update(data)
-
-            # Load our bits from template file
-            tmpl = Chrome(self.env).load_template('openid-selector.html')
-            ts = Stream(list(tmpl.generate(**tmpl_data)))
-            scripts = ts.select('//head[1]/script')
-            formbody = ts.select('//form[1]/*')
-
-            cntrl = stream.select('//*[@class="openid-authn-controls"]')
-
-            stream |= Transformer('//head[1]').append(scripts)
-            stream |= Transformer(
-                '//*[@class="openid-authn-controls"]').replace(formbody)
-            data['openid.selector_done'] = True
-
-        return stream
+        return {
+            'template': 'openid-selector.html',
+            'signup': self.signup_link,
+            'whatis': self.whatis_link,
+            'js_config': json.dumps(js_config),
+            }

@@ -277,6 +277,16 @@ class IOpenIDUserRegistration(Interface):
 
         :raises: :exc:`RequestDone` This is a no-return method.
         """
+
+class IOpenIDFancySelector(Interface):
+    """ Support for pluggable fancy OpenID selectors.
+
+    FIXME: Document
+    """
+    def populate_data(req, data):
+        """ Mangle the template data
+        """
+
 class IOpenIDConsumer(Interface):
     """ Handle the nitty-gritty of OpenID authentication.
 

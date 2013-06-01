@@ -6,16 +6,18 @@
       xmlns:py="http://genshi.edgewall.org/">
 
   <xi:include href="layout.html" />
-  <xi:include py:if="selector_template" href="${selector_template}" />
+
+  <xi:include py:if="selector.template" href="${selector.template}"/>
 
   <head>
     <title>OpenID Login</title>
   </head>
   <body>
-    <form method="post" accept-charset="UTF-8" action="${href.openid('login')}">
+    <form method="post" accept-charset="UTF-8" action="${href.openid('login')}"
+          class="openid-authn-form">
       <fieldset>
         <legend>Sign in with OpenID</legend>
-        <div class="openid-authn-controls">
+        <div class="controls">
           <label for="openid_identifier">OpenID</label>
           <input type="text" name="openid_identifier" value=""
                  class="openid_identifier" size="45"/>

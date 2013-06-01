@@ -142,9 +142,14 @@ class OpenIDPreferencePanel(Component):
         return AuthOpenIdPlugin(self.env)._check_authorization(req, oid_identifier)
 
     def _panel(self, req):
+        # FIXME:
+        fancy_selector = AuthOpenIdPlugin(self.env).fancy_selector
+
         data = {
             'openid_identifiers':
             self.identifier_store.get_identifiers(req.authname),
             }
+        if fancy_selector:
+            data['selector'] = fancy_selector.get_template_data(req)
 
         return 'openid_preferences.html', data

@@ -3,36 +3,54 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:xi="http://www.w3.org/2001/XInclude"
-      xmlns:py="http://genshi.edgewall.org/">
+      xmlns:py="http://genshi.edgewall.org/"
+      py:strip="">
 
-  <head>
-    <script type="text/javascript">
-      $(document).ready(function() {
-        $.extend(true, openid, openid_config);
-        $.extend(providers_large, openid_config.providers_large);
-        $.extend(providers_small, openid_config.providers_small);
-        openid.init("openid_identifier");
-      });
-    </script>
-  </head>
+  <py:match path="head">
+    <head py:with="htdocs = href.chrome('authopenid/openid-selector')">
+      ${select("*|text()")}
+      <link rel="stylesheet" type="text/css" href="${htdocs}/css/openid.css"/>
+      <script type="text/javascript" charset="utf-8"
+              src="${htdocs}/js/openid-jquery.js"></script>
+      <script type="text/javascript" charset="utf-8"
+              src="${htdocs}/js/openid-en.js"></script>
+      <script type="text/javascript">
+        $.extend(true, window, ${selector.js_config});
+        $(document).ready(function() {
+          // prevent openid-selector from munging submit button value
+          openid.signin_text = $("#openid_form :submit").attr("value")
+                               || openid.signin_text;
+          openid.init("openid_identifier");
+        });
+      </script>
+    </head>
+  </py:match>
 
-  <body>
-    <!-- FIXME: rename form id -->
-    <form method="post" accept-charset="UTF-8" action="">
-      <div id="openid_choice">
-        <p>Please click your account provider:</p>
-        <div id="openid_btns"></div>
-      </div>
-      <div id="openid_input_area">
-        OpenID URL:
-        <input type="text" id="openid_identifier"
-               name="openid_identifier" class="openid_identifier" value="" />
-        <input type="submit" value="Sign-in" />
-      </div>
-      <p py:if="whatis or signup">
-        <a py:if="whatis" href="${whatis}">What is OpenId?</a>
-        <a py:if="signup" href="${signup}">Sign-up</a>
-      </p>
+  <!--! Stick the require id on the form element -->
+  <py:match path="form[@class='openid-authn-form']">
+    <form id="openid_form" py:attrs="select('@*')">
+      ${select("*|text()")}
     </form>
-  </body>
+  </py:match>
+
+  <!--! Replace the form controls -->
+  <py:match path="form[@class='openid-authn-form']//*[@class='controls']"
+            py:with="submit_label
+                     = select('.//input[@type=\'submit\'][1]/@value')">
+    <div id="openid_choice">
+      <p>Please click your account provider:</p>
+      <div id="openid_btns"></div>
+    </div>
+    <div id="openid_input_area">
+      OpenID URL:
+      <input type="text" id="openid_identifier"
+             name="openid_identifier" class="openid_identifier" value="" />
+      <input type="submit" value="${submit_label or 'Log-in'}"/>
+    </div>
+    <p py:if="selector.whatis or selector.signup">
+      <a py:if="selector.whatis" href="${selector.whatis}">What is OpenId?</a>
+      <a py:if="selector.signup" href="${selector.signup}">Sign-up</a>
+    </p>
+  </py:match>
+
 </html>
