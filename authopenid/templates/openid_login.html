@@ -12,11 +12,10 @@
     <title>OpenID Login</title>
   </head>
   <body>
-    <form id="openid_form" method="post" accept-charset="UTF-8"
-          action="${href.openid('login')}">
+    <form method="post" accept-charset="UTF-8" action="${href.openid('login')}">
       <fieldset>
         <legend>Sign in with OpenID</legend>
-        <div>
+        <div class="openid-authn-controls">
           <label for="openid_identifier">OpenID</label>
           <input type="text" name="openid_identifier" value=""
                  class="openid_identifier" size="45"/>

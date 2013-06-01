@@ -71,7 +71,8 @@ class OpenIDSelector(Component):
             self.openid_config[key] = {pid: provider}
 
     def filter_stream(self, req, method, filename, stream, data):
-        if filename.startswith('openid'):
+        if filename.startswith('openid') \
+               and not 'openid.selector_done' in data:
             openid_config=dict(
                 self.openid_config,
                 img_path=req.href.chrome('authopenid/openid-selector/images'
@@ -93,8 +94,11 @@ class OpenIDSelector(Component):
             scripts = ts.select('//head[1]/script')
             formbody = ts.select('//form[1]/*')
 
+            cntrl = stream.select('//*[@class="openid-authn-controls"]')
+
             stream |= Transformer('//head[1]').append(scripts)
             stream |= Transformer(
-                '//form[@id="openid_form"]/*').replace(formbody)
+                '//*[@class="openid-authn-controls"]').replace(formbody)
+            data['openid.selector_done'] = True
 
         return stream

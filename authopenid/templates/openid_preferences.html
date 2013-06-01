@@ -41,7 +41,7 @@
     </div>
 
     <h2>Add an OpenID</h2>
-    <form method="post" action="">
+    <form method="post" accept-charset="UTF-8" action="">
       <fieldset>
         <legend>Claim an OpenID</legend>
         <div py:if="len(openid_identifiers)" class="important">
@@ -50,7 +50,7 @@
           OpenID will remove any previously associated OpenIDs.  (Support
           for multiple OpenIDs per user will be added at some point.)
         </div>
-        <p>
+        <p class="openid-authn-controls">
           <input type="text" name="openid_identifier" value="" size="50"/>
           <input type="hidden" name="action" value="associate"/>
           <input type="submit" value="Claim"/>
