@@ -21,7 +21,7 @@ from authopenid.api import (
     AuthenticationFailed,
     AuthenticationCancelled,
     SetupNeeded,
-    IOpenIDExtensionProvider,
+    IOpenIDAuthnRequestListener,
     OpenIDIdentifier,
     IOpenIDConsumer,
     )
@@ -127,8 +127,8 @@ class OpenIDConsumer(Component):
         project.
         """)
 
-    openid_extension_providers = OrderedExtensionsOption(
-        'openid', 'openid_extension_providers', IOpenIDExtensionProvider)
+    openid_authn_request_listeners = OrderedExtensionsOption(
+        'openid', 'openid_authn_request_listeners', IOpenIDAuthnRequestListener)
 
     consumer_class = openid.consumer.consumer.Consumer # testing
 
@@ -152,8 +152,8 @@ class OpenIDConsumer(Component):
                 # FIXME: (and maybe ProtocolError?)
                 auth_request = consumer.begin(identifier)
 
-                for provider in self.openid_extension_providers:
-                    provider.add_to_auth_request(req, auth_request)
+                for provider in self.openid_authn_request_listeners:
+                    provider.prepare_authn_request(req, auth_request)
 
                 if auth_request.shouldSendRedirect():
                     redirect_url = auth_request.redirectURL(
@@ -201,7 +201,7 @@ class OpenIDConsumer(Component):
 
                 identifier = OpenIDIdentifier(claimed_identifier)
 
-                for provider in self.openid_extension_providers:
+                for provider in self.openid_authn_request_listeners:
                     provider.parse_response(response, identifier)
 
                 return identifier

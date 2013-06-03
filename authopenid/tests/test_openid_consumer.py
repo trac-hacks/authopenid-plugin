@@ -89,9 +89,9 @@ class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
     def setUp(self):
         from authopenid.openid_consumer import OpenIDConsumer
 
-        self.extension_providers = []
-        patcher = patch.object(OpenIDConsumer, 'openid_extension_providers',
-                               self.extension_providers)
+        self.authn_request_listeners = []
+        patcher = patch.object(OpenIDConsumer, 'openid_authn_request_listeners',
+                               self.authn_request_listeners)
         self.addCleanup(patcher.stop)
         consumer_class = patcher.start()
 
@@ -143,14 +143,14 @@ class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
         self.assertIn(call.send(form_html, "text/html"), req.mock_calls)
 
 
-    def test_begin_with_extension_providers(self):
+    def test_begin_with_authn_request_listeners(self):
         provider = Mock(name='provider')
-        self.extension_providers.append(provider)
+        self.authn_request_listeners.append(provider)
 
         with self.assertRaises(RequestDone):
             self.consumer_begin()
         self.assertEqual(provider.mock_calls, [
-            call.add_to_auth_request(ANY, self.auth_request)])
+            call.prepare_authn_request(ANY, self.auth_request)])
 
     def test_complete(self):
         identifier = self.consumer_complete()
@@ -161,14 +161,14 @@ class TestOpenIDConsumer(unittest.TestCase, OIDConsumerTestMixin):
         identifier = self.consumer_complete()
         self.assertEqual(str(identifier), 'INAME')
 
-    def test_complete_with_extension_providers(self):
+    def test_complete_with_authn_request_listeners(self):
         provider = Mock(name='provider')
         data = (('a', 'b'), ('c', 'd'))
         def parse_response(response, identifier):
             for k, v in data:
                 identifier.signed_data.add(k, v)
         provider.parse_response = parse_response
-        self.extension_providers.append(provider)
+        self.authn_request_listeners.append(provider)
 
         identifier = self.consumer_complete()
         self.assertEqual(set(identifier.signed_data.items()), set(data))

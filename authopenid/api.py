@@ -29,14 +29,6 @@ class OpenIDException(Exception):
     def __str__(self):
         return self.__unicode__().encode('utf-8')
 
-class ExtensionResponseUnacceptable(OpenIDException):
-    """ OpenID response is not acceptable here
-
-    This exception is raised by extension providers to indicate that
-    the OpenID response should not be used for authentication.
-
-    """
-
 class NotAuthorized(OpenIDException):
     """ User is not allowed here
 
@@ -139,12 +131,24 @@ class OpenIDIdentifier(str):
         return str(self)
 
 
-class IOpenIDExtensionProvider(Interface):
-    """ Provides support for requesting information via OpenID extensions.
+class IOpenIDAuthnRequestListener(Interface):
+    """ Components implementing :class:`IOpenIDAuthnRequestListener`
+    can participate in the OpenID checkid requests.
+
+    These components can, e.g., make requests for extra information
+    from the OP via OpenID extension protocols.  They can also be used
+    to prevent the use of certain OpenID providers (or particular)
+    identifiers for authentication (though see also
+    :class:`IOpenIDAuthorizationPolicy` for an interface with similar
+    uses.)
+
     """
 
-    def add_to_auth_request(req, auth_request):
-        """ Modify auth_request to make desired extension request.
+    def prepare_authn_request(req, auth_request):
+        """ Possibly modify authn_request.
+
+        This method is called before the authentication request is sent
+        to the OP.  It might be used to add extension fields to the request.
 
         :type req: :class:`trac.web.api.Request`
         :type auth_request: :class:`openid.consumer.consumer.AuthRequest`
@@ -154,22 +158,30 @@ class IOpenIDExtensionProvider(Interface):
     def parse_response(response, oid_identifier):
         """ Parse the response.
 
-        This should extract any information of interest from extension
-        fields in the OpenID id_res response and insert it into the
-        ``signed_data`` multidict on the ``oid_identifier``.
+        This method is called after the receptions of an affirmative response
+        to an authentication request.
 
+        This method might be used to extract information from
+        extension fields in the response.  In this case the method
+        probably will want to add any extracted information to the
+        ``signed_data`` multidict on the ``oid_identifier`` object.
         Generally any data should be appended to that already in the
-        ``signed_data`` dict (using :meth:``MultiDict.add``).  That way
-        data provider by earlier extension providers will take precedence
-        over that provided by later ones.
+        ``signed_data`` dict (using :meth:``MultiDict.add``).  That
+        way data provider by earlier extension providers will take
+        precedence over that provided by later ones.
 
-        Only data which comes from signed response fields should be
-        placed into the ``signed_data`` dict.
+        .. NOTE:: Only data which comes from signed response fields should be
+            placed into the ``signed_data`` dict.
+
+        This method can also be used to prevent the use of the
+        identifier for authentication.  In this case the method should
+        an exc:`AuthenticationFailed` exception to signal that the
+        identifier should not be used for further authentication.
 
         :type response: :class:`openid.consumer.consumer.SuccessResponse`
         :type oid_identifier: :class:`OpenIDIdentifier`
 
-        :raises: :exc:`ExtensionResponseUnacceptable` if the data
+        :raises: :exc:`AuthenticationFailed` if the data
             returned via the openid extension indicates that the
             entire OpenID response is not acceptable for use in
             authentication.  (This can be used, for example, to
@@ -221,6 +233,7 @@ class IOpenIDUserDataProvider(Interface):
             and ``'email'`` as well as perhaps others.)
         """
 
+# FIXME: Rename to UnknownUser ?
 class UserNotFound(KeyError):
     pass
 

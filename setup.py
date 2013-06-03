@@ -87,7 +87,6 @@ setup(
             'OpenIDConsumer = authopenid.openid_consumer',
             'UserLogin = authopenid.userlogin',
             # FIXME:
-            #'Something = authopenid.extension_providers',
             'Authorizers = authopenid.authorization',
             'OpenIDExtensionsProvider = authopenid.openid_ext',
             'OpenIDIdentifierStore = authopenid.identifier_store',

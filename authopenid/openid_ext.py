@@ -7,18 +7,18 @@ from openid.extensions import sreg, ax, pape
 
 from authopenid.api import (
     EMAIL_ADDRESS, FULL_NAME, NICKNAME,
-    IOpenIDExtensionProvider,
+    IOpenIDAuthnRequestListener,
     )
 
 _FIRST_NAME = 'openid.ax.firstname'
 _LAST_NAME = 'openid.ax.lastname'
 
 class OpenIDExtensionProvider(Component):
-    implements(IOpenIDExtensionProvider)
+    implements(IOpenIDAuthnRequestListener)
 
     abstract = True
 
-    def add_to_auth_request(self, req, auth_request):
+    def prepare_authn_request(self, req, auth_request):
         ext_request = self._get_extension_request(req)
         if ext_request:
             auth_request.addExtension(ext_request)
