@@ -84,14 +84,6 @@ setup(
             # This just determines which modules trac loads initially.
             # I don't think the entry point names matter.
             '%s = authopenid' % PACKAGE,
-            'OpenIDConsumer = authopenid.openid_consumer',
-            'UserLogin = authopenid.userlogin',
-            # FIXME:
-            'Authorizers = authopenid.authorization',
-            'OpenIDExtensionsProvider = authopenid.openid_ext',
-            'OpenIDIdentifierStore = authopenid.identifier_store',
-            'OpenIDRegistrationModule = authopenid.register',
-            'OpenIDPreferenceModule = authopenid.preferences',
             ],
         },
 
