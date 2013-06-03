@@ -15,7 +15,7 @@ from authopenid.api import (
     UserNotFound,
     )
 
-class TestOpenIDIdentiferStore(unittest.TestCase):
+class TestOpenIDIdentifierStore(unittest.TestCase):
     def setUp(self):
         self.env = EnvironmentStub()
         #assert self.env.dburi == 'sqlite::memory:'
