@@ -33,7 +33,6 @@ if not hasattr(unittest.TestCase, 'assertIn'):
 from webtest import TestApp
 from webtest.http import StopableWSGIServer
 from webtest.response import TestResponse
-import webtest.lint
 import webob
 
 import openid

@@ -16,10 +16,8 @@ from pkg_resources import resource_filename
 from trac.core import Component, implements
 from trac.config import (
     BoolOption,
-    ChoiceOption,
     ConfigurationError,
     ExtensionOption,
-    ListOption,
     Option,
     OrderedExtensionsOption,
     )
