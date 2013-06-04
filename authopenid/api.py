@@ -239,7 +239,7 @@ class UserNotFound(KeyError):
 
 class OpenIDIdentifierInUse(OpenIDException, KeyError):
     def __init__(self, username, identifier):
-        msg = escape("User %s is aready using identifier %s") % (
+        msg = escape("User %s is already using identifier %s") % (
             tag.code(username), tag.code(identifier))
         super(OpenIDIdentifierInUse, self).__init__(msg, username, identifier)
 

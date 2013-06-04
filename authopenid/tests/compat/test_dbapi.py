@@ -114,6 +114,26 @@ class TestQueryContextManager(CnxTestBase, DbContextManagerTests):
             pass
         self.assertEquals(self.cnx.mock_calls, [call.close()])
 
+@skipIfModernTrac
+class TestTransactionContextManagerWithInMemoryDatabase(unittest.TestCase):
+    def setUp(self):
+        self.env = EnvironmentStub()
+        #assert self.env.dburi == 'sqlite::memory:'
+
+    def tearDown(self):
+        self.env.destroy_db()
+
+    def make_one(self):
+        from authopenid.compat._dbapi import TransactionContextManager
+        return TransactionContextManager(self.env)
+
+    def test(self):
+        with self.make_one() as db:
+            db("INSERT INTO system (name, value) VALUES (%s, %s)",
+               ('k1', 'v1'))
+        with self.make_one() as db:
+            self.assertIn(('k1', 'v1'), db("SELECT name, value FROM system"))
+
 class TestConnectionWrapper(unittest.TestCase):
     def setUp(self):
         self.cnx = Mock(name='cnx')

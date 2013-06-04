@@ -5,3 +5,8 @@ include = authopenid/*
 omit =
     .tox/*
     */tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    class .*\(Interface\):

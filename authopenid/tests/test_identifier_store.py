@@ -1,19 +1,19 @@
 from __future__ import absolute_import
 
-import sys
-if sys.version_info >= (2, 7):
-    import unittest
-else:
+import unittest
+if not hasattr(unittest, 'skipIf'):
     import unittest2 as unittest
 
 from trac.test import EnvironmentStub
 from trac.web.session import DetachedSession
+
 
 from authopenid.api import (
     OpenIDIdentifier,
     OpenIDIdentifierInUse,
     UserNotFound,
     )
+from authopenid.compat import modernize_env
 
 class TestOpenIDIdentifierStore(unittest.TestCase):
     def setUp(self):
@@ -27,19 +27,36 @@ class TestOpenIDIdentifierStore(unittest.TestCase):
         from authopenid.identifier_store import OpenIDIdentifierStore
         return OpenIDIdentifierStore(self.env)
 
-    def create_user(self, username, identifier=None):
+    def create_user(self, username, identifier=None, last_visit=None):
         from authopenid.identifier_store import OpenIDIdentifierStore
         ds = DetachedSession(self.env, username)
         ds['name'] = username
         if identifier:
             ds[OpenIDIdentifierStore.identifier_skey] = ident(identifier)
         ds.save()
+        if last_visit is not None:
+            with modernize_env(self.env).db_transaction as db:
+                db("UPDATE session SET last_visit=%s"
+                   " WHERE sid=%s and authenticated=1",
+                   (last_visit, username))
 
     def test_get_user(self):
         self.create_user('joe', '=joe')
         store = self.get_identifier_store()
         self.assertEqual(store.get_user(ident('=joe')), 'joe')
         self.assertIs(store.get_user(ident('=notjoe')), None)
+
+    def test_get_user_returns_most_recent_if_multiple_matches(self):
+        self.create_user('old', '=id', last_visit=1000)
+        self.create_user('new', '=id', last_visit=2000)
+        store = self.get_identifier_store()
+        with LogCapture() as l:
+            self.assertEqual(store.get_user(ident('=id')), 'new')
+        self.assertEqual(len(l.records), 1)
+        self.assertRegexpMatches(
+            l.records[0].getMessage(),
+            "\AMultiple users share the same openid identifier:")
+
 
     def test_get_identifiers(self):
         self.create_user('joe', '=joe')
@@ -104,6 +121,13 @@ class TestOpenIDIdentifierStore(unittest.TestCase):
         store.discard_identifier('joe', ident('=bob'))
         self.assertEqual(store.get_identifiers('joe'), set(['=joe']))
 
+    def test_discard_identifier_no_identifier(self):
+        self.create_user('joe')
+        store = self.get_identifier_store()
+        self.assertEqual(store.get_identifiers('joe'), set())
+        store.discard_identifier('joe', ident('=joe'))
+        self.assertEqual(store.get_identifiers('joe'), set())
+
     def test_discard_identifier_raises_user_not_found(self):
         store = self.get_identifier_store()
         with self.assertRaises(UserNotFound):
@@ -118,3 +142,22 @@ class TestOpenIDIdentifierStore(unittest.TestCase):
 
 def ident(s):
     return OpenIDIdentifier(s)
+
+import logging
+
+class LogCapture(logging.Handler):
+    def __init__(self):
+        logging.Handler.__init__(self)
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+    def __enter__(self):
+        log = logging.getLogger()
+        log.addHandler(self)
+        return self
+
+    def __exit__(self, *args):
+        log = logging.getLogger()
+        log.removeHandler(self)

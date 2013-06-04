@@ -59,8 +59,8 @@ class OpenIDIdentifierStore(Component):
             # FIXME: Probably should provide a config option which
             # controls whether this is a error or not.
             self.log.warning(
-                "Mutiple users share the same openid identifier: %s",
-                ', '.join(repr(user) for (user,) in rows))
+                "Multiple users share the same openid identifier: %s",
+                ', '.join("'%s'" % user for (user,) in rows))
         return rows[0][0]
 
     def get_identifiers(self, username):

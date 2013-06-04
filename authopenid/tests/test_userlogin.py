@@ -7,7 +7,7 @@ if sys.version_info >= (2, 7):
 else:
     import unittest2 as unittest
 
-from mock import Mock
+from mock import Mock, patch, call
 import webob
 
 from trac.test import EnvironmentStub
@@ -18,7 +18,7 @@ from trac.web.session import DetachedSession
 
 class UserLoginIntegrationTests(unittest.TestCase):
     def setUp(self):
-        self.env = EnvironmentStub()
+        self.env = EnvironmentStub(enable=[])
         #assert self.env.dburi == 'sqlite::memory:'
         self.create_user('someone')
 
@@ -79,6 +79,16 @@ class UserLoginIntegrationTests(unittest.TestCase):
             'chrome.notices.0': 'a notice',
             })
 
+    def test_login_does_not_save_chrome_message_for_missing_user(self):
+        ul = self.get_user_login()
+        req = self.make_request()
+        chrome.add_notice(req, "a notice")
+        with self.assertRaises(Redirected):
+            ul.login(req, 'nonexistant user')
+        self.assertEqual(len(req.chrome['notices']), 1)
+        ds = DetachedSession(self.env, 'nonexistant user')
+        self.assertEqual(dict(ds), {})
+
     def test_logout(self):
         ul = self.get_user_login()
         req = self.make_request(authname='someone')
@@ -106,6 +116,43 @@ class UserLoginIntegrationTests(unittest.TestCase):
             ul.logout(req, referer)
         self.assertEqual(raised.exception.url, referer)
 
+    def test_get_active_navigation_item(self):
+        ul = self.get_user_login()
+        req = self.make_request()
+        self.assertEquals(ul.get_active_navigation_item(req), 'openid/logout')
+
+    def test_get_navigation_items(self):
+        ul = self.get_user_login()
+        req = self.make_request(authname='joe')
+        navitems = dict(((cat, name), text)
+                        for cat, name, text in ul.get_navigation_items(req))
+        self.assertEquals(set(navitems), set([('metanav', 'openid/login'),
+                                              ('metanav', 'openid/logout')]))
+        self.assertEquals(navitems['metanav', 'openid/login'],
+                          'logged in as joe')
+        self.assertEquals(
+            navitems['metanav', 'openid/logout'].attrib.get('href'),
+            req.href.openid('logout'))
+
+    def test_get_navigation_items_anonymous(self):
+        ul = self.get_user_login()
+        req = self.make_request(authname='anonymous')
+        self.assertEquals(list(ul.get_navigation_items(req)), [])
+
+    def test_match_request(self):
+        ul = self.get_user_login()
+        self.assertTrue(ul.match_request(
+            self.make_request(path_info='/openid/logout')))
+        self.assertFalse(ul.match_request(
+            self.make_request(path_info='/openid/login')))
+
+    def test_process_request(self):
+        ul = self.get_user_login()
+        req = self.make_request(path_info='/openid/logout')
+        with patch.object(ul, 'logout') as logout:
+            ul.process_request(req)
+        self.assertEquals(logout.mock_calls, [call(req)])
+
     def test_authenticate(self):
         ul = self.get_user_login()
         req = self.make_request()
@@ -126,7 +173,8 @@ class Redirected(Exception):
 
 
 class MockRequest(Request):
-    def __init__(self, base_url='http://example.net/', authname='anonymous'):
+    def __init__(self, base_url='http://example.net/', authname='anonymous',
+                 path_info=''):
         environ = webob.Request.blank(base_url).environ
 
         # Cleanup HTTP_HOST
@@ -134,6 +182,7 @@ class MockRequest(Request):
             environ['HTTP_HOST'] = environ['HTTP_HOST'][:-3]
 
         environ['SCRIPT_NAME'] = environ.pop('PATH_INFO')
+        environ['PATH_INFO'] = path_info
 
         start_response = Mock(name='start_response', spec=())
         Request.__init__(self, environ, start_response)
