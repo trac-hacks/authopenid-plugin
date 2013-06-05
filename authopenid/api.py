@@ -131,6 +131,7 @@ class OpenIDIdentifier(str):
         return str(self)
 
 
+# FIXME: rename to *Participant
 class IOpenIDAuthnRequestListener(Interface):
     """ Components implementing :class:`IOpenIDAuthnRequestListener`
     can participate in the OpenID checkid requests.
@@ -190,6 +191,7 @@ class IOpenIDAuthnRequestListener(Interface):
 
         """
 
+# FIXME: delete
 class IOpenIDAuthorizationPolicy(Interface):
     """ Provides support for authorizing OpenID users.
 
@@ -211,26 +213,77 @@ class IOpenIDAuthorizationPolicy(Interface):
         :type req: :class:`trac.web.api.Request`
         :type identifier: :class:`IOpenIDIdentifier`
 
-        :returns: True if the user is authorized.  If the policy returns
-            ``False``, it does not make any particular claims about the
-            authorization of the user.
+        :returns: True if the user is authorized to create a new
+            account.  If the policy returns ``False``, it does not
+            make any particular claims about the authorization of the
+            user.
 
         :raises: :exc:`NotAuthorized` if the user is not authorized
 
         """
 
-class IOpenIDUserDataProvider(Interface):
-    """ Provides initial user data for new account registration via OpenID
+class IOpenIDRegistrationParticipant(Interface):
+    """ Provides authorization as well as suggested username(s) and
+    initial user data for new account registration via OpenID
+
     """
-    def get_user_data(req, identifier):
-        """ Get username and attributes for new account created via OpenID
+    # FIXME: maybe don't need the return value.  (Just raise exception.)?
+    def authorize(req, oid_identifier):
+        """ Determine whether user is authorized to register a new account.
+
+        When a new user (one with an unrecognized OpenID identifier)
+        attempts to log in, the :meth:`authorize` method of all
+        enabled :class:`IOpenIDRegistrationParticipant`\s will be
+        called to check whether the user should be allowed to create a
+        new account on the trac.  If any of the participants raises
+        :exc:`NotAuthorized`, or if none of the participants return a
+        true value, authorization will be denied; otherwise if any of
+        the participants returns a true value, new account registration
+        will be permitted.
 
         :type req: :class:`trac.web.api.Request`
         :type identifier: :class:`IOpenIDIdentifier`
 
-        :returns: A pair ``(username, attributes)``, where ``attributes``
-            is a dict of user attributes (probably containing keys ``'name'``
-            and ``'email'`` as well as perhaps others.)
+        :returns: ``True`` if the user is authorized to create a new
+            account.  If the policy returns ``False``, it does not
+            make any particular claims about the authorization of the
+            user.
+
+        :raises: :exc:`NotAuthorized` if the user is not authorized
+
+        """
+
+    def suggest_username(req, oid_identifier):
+        """ Get suggested username for new account
+
+        The :meth:`suggest_username` method will be called for all
+        enabled :class:`IOpenIDRegistrationParticipant`\s.  The
+        usernames return by all participants will be collected into a
+        single sequence.  Usernames returned by earlier participants
+        takes precedence over usernames from those listed later.
+
+        :type req: :class:`trac.web.api.Request`
+        :type identifier: :class:`IOpenIDIdentifier`
+
+        :returns: A suggested username (trac SID) for the new account,
+            or ``None`` if there is no suggestion.  Can also return a sequence
+            of suggestions.
+        """
+
+    def get_user_data(req, oid_identifier):
+        """ Get username and attributes for new account created via OpenID
+
+        The :meth:`get_user_data` method will be called for all
+        enabled :class:`IOpenIDRegistrationParticipant`\s.  The
+        user data returned by all participants will merged.  Data
+        returned by earlier participants takes precedence over that
+        from those listed later.
+
+        :type req: :class:`trac.web.api.Request`
+        :type identifier: :class:`IOpenIDIdentifier`
+
+        :returns: A dict of user attributes (probably containing keys
+            ``'name'`` and ``'email'`` as well as perhaps others.)
         """
 
 # FIXME: Rename to UnknownUser ?

@@ -26,6 +26,7 @@ class TestOpenIDLegacyRegistrationModule(unittest.TestCase):
             'trac.*',
             'authopenid.identifier_store.*',
             'authopenid.userlogin.*',
+            'authopenid.register.*',
             ])
         #assert self.env.dburi == 'sqlite::memory:'
 
