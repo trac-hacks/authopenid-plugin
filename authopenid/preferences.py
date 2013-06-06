@@ -96,13 +96,6 @@ class OpenIDPreferencePanel(Component):
             chrome.add_warning(req, exc)
             return req.redirect(req.href.prefs('openid'))
 
-        # FIXME: should authz checks be performed only for new accounts?
-        try:
-            self._check_authorization(req, identifier)
-        except NotAuthorized as exc:
-            chrome.add_warning(req, exc)
-            return req.redirect(req.href.prefs('openid'))
-
         try:
             self.identifier_store.add_identifier(username, identifier)
         except OpenIDIdentifierInUse as exc:
@@ -136,10 +129,6 @@ class OpenIDPreferencePanel(Component):
                 req, escape("Deleted OpenID %s") % tag.code(oid_identifier))
         return self._panel(req)
 
-
-    # FIXME:
-    def _check_authorization(self, req, oid_identifier):
-        return AuthOpenIdPlugin(self.env)._check_authorization(req, oid_identifier)
 
     def _panel(self, req):
         # FIXME:

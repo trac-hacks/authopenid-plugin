@@ -19,7 +19,6 @@ from trac.config import (
     ConfigurationError,
     ExtensionOption,
     Option,
-    OrderedExtensionsOption,
     )
 from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
@@ -31,8 +30,6 @@ from genshi.builder import tag
 from authopenid.api import (
     DiscoveryFailure,
     NegativeAssertion,
-    NotAuthorized,
-    IOpenIDAuthorizationPolicy,
     IOpenIDIdentifierStore,
     IOpenIDUserRegistration,
     IOpenIDConsumer,
@@ -57,16 +54,18 @@ class AuthOpenIdPlugin(Component):
     ################################################################
     # Configuration
 
+    # FIXME: rename?
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
 
+    # FIXME: move these
     strip_protocol = BoolOption('openid', 'strip_protocol', False,
             """Instead of using username beginning with http:// or https:// you can strip the beginning.""")
 
     strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
             """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
 
-
+    # FIXME: move these
     check_list = Option('openid', 'check_list', None,
             """JSON service for openid check.""")
 
@@ -76,9 +75,6 @@ class AuthOpenIdPlugin(Component):
     check_list_username = Option('openid', 'check_list_username', None,
             """Username for openid Service.""")
 
-
-    authorization_policies = OrderedExtensionsOption(
-        'openid', 'authorization_policies', IOpenIDAuthorizationPolicy)
 
     fancy_selector = ExtensionOption(
         'openid', 'fancy_selector', IOpenIDFancySelector,
@@ -92,9 +88,11 @@ class AuthOpenIdPlugin(Component):
         'openid', 'registration_module', IOpenIDUserRegistration,
         default='OpenIDLegacyRegistrationModule')
 
+    # FIXME: does this need to be an option?
     user_login = ExtensionOption(
         'openid', 'user_login_provider', IUserLogin, default='UserLogin')
 
+    # FIXME: does this need to be an option?
     openid_consumer = ExtensionOption(
         'openid', 'openid_consumer', IOpenIDConsumer,
         default='OpenIDConsumer')
@@ -136,10 +134,10 @@ class AuthOpenIdPlugin(Component):
             chrome.add_warning(req, "Already logged in")
             return req.redirect(self.get_start_page(req))
 
-        if req.path_info == '/openid/login':
-            return self._do_login(req)
-        elif req.path_info == '/openid/response':
+        if req.path_info == '/openid/response':
             return self._do_process(req)
+        else:
+            return self._do_login(req)
 
     def _do_login(self, req):
 
@@ -186,13 +184,6 @@ class AuthOpenIdPlugin(Component):
             chrome.add_warning(req, exc)
             return req.redirect(req.href.openid('login'))
 
-        # FIXME: should authz checks be performed only for new accounts?
-        try:
-            self._check_authorization(req, identifier)
-        except NotAuthorized as exc:
-            chrome.add_warning(req, exc)
-            return req.redirect(req.href.openid('login'))
-
         username = self.identifier_store.get_user(identifier)
         # XXX: update name/email if account already exists?
 
@@ -204,16 +195,6 @@ class AuthOpenIdPlugin(Component):
         self.user_login.login(req, username,
                               referer=self.get_start_page(req))
 
-
-    def _check_authorization(self, req, identifier):
-        # make sure to call all authorization providers to give each
-        # a chance to raise NotAuthorized
-        results = [ policy.authorize(req, identifier)
-                    for policy in self.authorization_policies ]
-        if not any(bool(result) is True for result in results):
-            # FIXME: better message
-            raise NotAuthorized(
-                    "No configured authorization policy matched")
 
     def get_session(self, req):
         """ This returns our own private session dict.
@@ -250,6 +231,6 @@ class AuthOpenIdPlugin(Component):
 
     def _login_form(self, req):
         data = {}
-        if self.fancy_selector:
+        if hasattr(self, 'fancy_selector'):
             data['selector'] = self.fancy_selector.get_template_data(req)
         return "openid_login.html", data, None
