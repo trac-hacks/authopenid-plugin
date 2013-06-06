@@ -39,6 +39,15 @@ class TestPickleSession(unittest.TestCase):
         session = self.make_one()
         self.assertEqual(session, {})
 
+    def test_mutator_with_kwargs(self):
+        session = self.make_one()
+        session.update(key='value')
+        self.assertEquals(session['key'], 'value')
+
+    def test_mutator_name(self):
+        session = self.make_one()
+        self.assertEquals(session.update.__name__, dict.update.__name__)
+
 BASE_URL = 'http://example.com/trac/'
 
 class Test_sanitize_referer(unittest.TestCase):

@@ -16,8 +16,8 @@ from trac.db.api import DatabaseManager
 from authopenid.compat import TransactionContextManager
 
 def _session_mutator(method):
-    def wrapped(self, *args):
-        rv = method(self, *args)
+    def wrapped(self, *args, **kwargs):
+        rv = method(self, *args, **kwargs)
         self.save()
         return rv
     try:
