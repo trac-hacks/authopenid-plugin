@@ -222,9 +222,10 @@ class OpenIDLegacyRegistrationModule(Component):
         user_login.login(req, username, start_page)
 
     def _uniquify_usernames(self, candidates):
-        for n in count(2):
-            for u in candidates:
-                yield "%s (%d)" % (u, n)
+        if len(candidates) > 0:
+            for n in count(2):              # pragma: no branch
+                for u in candidates:
+                    yield "%s (%d)" % (u, n)
 
 class DefaultRegistrationParticipant(Component):
     implements(IOpenIDRegistrationParticipant)
