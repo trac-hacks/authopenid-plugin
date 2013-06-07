@@ -11,7 +11,7 @@ from trac.web import chrome
 from trac.web.main import IRequestHandler
 
 from authopenid.api import (
-    NotAuthorized,
+    NegativeAssertion,
     DiscoveryFailure,
     OpenIDIdentifierInUse,
     UserNotFound,

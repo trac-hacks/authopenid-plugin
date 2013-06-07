@@ -168,7 +168,7 @@ class OpenIDLegacyRegistrationModule(Component):
         authname""")
 
 
-    # FIXME: should coument config to disable new account creation
+    # FIXME: should document config to disable new account creation
     #  (just disable all Registration Participants)
 
     def register_user(self, req, openid_identifier):
@@ -227,21 +227,9 @@ class OpenIDLegacyRegistrationModule(Component):
                 for u in candidates:
                     yield "%s (%d)" % (u, n)
 
+# FIXME: delete?
 class DefaultRegistrationParticipant(Component):
     implements(IOpenIDRegistrationParticipant)
-
-    # FIXME: combined_username?
-    combined_username = BoolOption(
-        'openid', 'combined_username', False,
-        """ Username will be written as username_in_remote_system
-        <openid_url>.""")
-
-    # FIXME: use_nickname_as_authname: use or refactor this
-    use_nickname_as_authname = BoolOption(
-        'openid', 'use_nickname_as_authname', False,
-        """ Whether the nickname as retrieved by SReg is used as
-        username""")
-
 
     def authorize(self, req, oid_identifier):
         return True                     # FIXME: ?

@@ -201,8 +201,13 @@ class OpenIDConsumer(Component):
 
                 identifier = OpenIDIdentifier(claimed_identifier)
 
-                for provider in self.openid_authn_request_listeners:
-                    provider.parse_response(response, identifier)
+                for p in self.openid_authn_request_listeners:
+                    p.parse_response(response, identifier)
+
+                if not all(p.is_trusted(response, identifier)
+                           for p in self.openid_authn_request_listeners):
+                    # FIXME: different exception?
+                    raise AuthenticationFailed()
 
                 return identifier
 

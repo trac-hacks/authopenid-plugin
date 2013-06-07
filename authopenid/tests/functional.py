@@ -239,7 +239,7 @@ class FunctionalTests(unittest.TestCase):
         resp = self.app.get('/').click(href='/openid/login')
         resp = self.submit_authentication_form(resp, identifier)
         self.assert_logged_out(resp)
-        self.assert_warning(resp, r'(?i)Not\s*Authorized')
+        self.assert_warning(resp, r'(?i)Authentication\s+failed')
         self.assertEqual(resp.request.path_info, '/openid/login')
 
     @print_log_on_failure

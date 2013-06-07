@@ -23,6 +23,9 @@ class OpenIDExtensionProvider(Component):
         if ext_request:
             auth_request.addExtension(ext_request)
 
+    def is_trusted(self, response, identifier):
+        return True
+
 class SREGExtensionProvider(OpenIDExtensionProvider):
     # FIXME: is this needed?
     sreg_required = BoolOption('openid', 'sreg_required', 'false',

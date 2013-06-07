@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+""" Support for the legacy (TracAuthOpenid 0.4) whitelist/blacklist config settings
+"""
 from __future__ import absolute_import
 
 import re
@@ -7,16 +10,17 @@ from trac.config import ListOption
 
 from authopenid.api import (
     EMAIL_ADDRESS,
-    IOpenIDAuthorizationPolicy,
-    NotAuthorized,
+    IOpenIDAuthnRequestListener,
     )
 
 class WhitelistAuthorizer(Component):
-    """ Implements whitelist/blacklist authorization.
+    """ Implements legacy whitelist/blacklist authorization.
 
-    XXX: Maybe move the email checking into a separate component.
+    Any openid identifiers which are hit by these lists will not be trusted
+    for authentication.
+
     """
-    implements(IOpenIDAuthorizationPolicy)
+    implements(IOpenIDAuthnRequestListener)
 
     white_list = ListOption('openid', 'white_list',
         doc="""Comma separated list of allowed OpenId identifiers.
@@ -48,38 +52,41 @@ class WhitelistAuthorizer(Component):
         self.black_list_re = _compile_patterns(self.black_list)
         self.email_white_list_re = _compile_patterns(self.email_white_list)
 
-    def authorize(self, req, identifier):
+    def prepare_authn_request(self, response, auth_request):
+        pass                            # pragma: no cover
+
+    def parse_response(self, response, identifier):
+        pass                            # pragma: no cover
+
+    def is_trusted(self, response, identifier):
         log = self.log
 
-        # FIXME: the logic here is wierd, (but, I think, matches the
-        # previous version of the plugin.)
+        # NB: the logic here is wierd, (but, I think, matches what
+        # version 0.4 of the plugin did.)
 
         if self.white_list_re:
             log.debug("checking white_list")
             if not self.white_list_re.match(identifier):
                 log.info("white_list does not match identity %r", identifier)
-                raise NotAuthorized()
+                return False
 
         if self.black_list_re:
             log.debug("checking black_list")
             if self.black_list_re.match(identifier):
                 log.info("black_list blocks identity %r", identifier)
-                raise NotAuthorized()
+                return False
 
         if self.email_white_list_re:
             try:
                 email = identifier.signed_data[EMAIL_ADDRESS]
             except KeyError:
                 log.info("No email address returned by OP")
-                raise NotAuthorized()
+                return False
             log.debug("checking email_white_list")
             if not self.email_white_list_re.match(email):
                 log.info("email_white_list does not match %r", email)
-                raise NotAuthorized()
+                return False
 
-        # FIXME: Really should return False if not white lists are
-        # configured.  For now we always return true since that matches
-        # previous behavior.
         return True
 
 def _compile_patterns(patterns):

@@ -14,12 +14,7 @@ from __future__ import absolute_import
 from pkg_resources import resource_filename
 
 from trac.core import Component, implements
-from trac.config import (
-    BoolOption,
-    ConfigurationError,
-    ExtensionOption,
-    Option,
-    )
+from trac.config import ConfigurationError, ExtensionOption, Option
 from trac.web import chrome
 from trac.web.chrome import INavigationContributor, ITemplateProvider
 from trac.web.main import IRequestHandler
@@ -57,13 +52,6 @@ class AuthOpenIdPlugin(Component):
     # FIXME: rename?
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
-
-    # FIXME: move these
-    strip_protocol = BoolOption('openid', 'strip_protocol', False,
-            """Instead of using username beginning with http:// or https:// you can strip the beginning.""")
-
-    strip_trailing_slash = BoolOption('openid', 'strip_trailing_slash', False,
-            """In case your OpenID is some sub-domain address OpenId library adds trailing slash. This option strips it.""")
 
     # FIXME: move these
     check_list = Option('openid', 'check_list', None,

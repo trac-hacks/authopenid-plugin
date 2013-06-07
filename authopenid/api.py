@@ -159,7 +159,7 @@ class IOpenIDAuthnRequestListener(Interface):
     def parse_response(response, oid_identifier):
         """ Parse the response.
 
-        This method is called after the receptions of an affirmative response
+        This method is called after the reception of an affirmative response
         to an authentication request.
 
         This method might be used to extract information from
@@ -174,21 +174,33 @@ class IOpenIDAuthnRequestListener(Interface):
         .. NOTE:: Only data which comes from signed response fields should be
             placed into the ``signed_data`` dict.
 
-        This method can also be used to prevent the use of the
-        identifier for authentication.  In this case the method should
-        an exc:`AuthenticationFailed` exception to signal that the
-        identifier should not be used for further authentication.
+        :type response: :class:`openid.consumer.consumer.SuccessResponse`
+        :type oid_identifier: :class:`OpenIDIdentifier`
+
+        """
+
+    def is_trusted(response, oid_identifier):
+        """ Determine whether the identifier is to be trusted for
+        authentication
+
+        This method is called after an affirmative response
+        to an authentication request has been fully parsed.
+        It can be used to prevent the use of the identifier for
+        authentication.
 
         :type response: :class:`openid.consumer.consumer.SuccessResponse`
         :type oid_identifier: :class:`OpenIDIdentifier`
 
-        :raises: :exc:`AuthenticationFailed` if the data
-            returned via the openid extension indicates that the
-            entire OpenID response is not acceptable for use in
-            authentication.  (This can be used, for example, to
-            enforce the required use of certain PAPE authentication
-            policies.)
+        :returns bool: Whether the identifier should be trusted.  If
+            any of the request participants return ``False``,
+            authentication will be considered to have failed.
 
+        #FIXME: use a different exception type?
+        :raises: :exc:`AuthenticationFailed`.  If the participant
+            would like to provide feedback to the user as to why the
+            identifier is not trusted, it can raise an
+            :exc:`AuthenticationFailed` exception with an appropriate
+            message.
         """
 
 # FIXME: delete
