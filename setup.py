@@ -12,6 +12,7 @@ CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
 
 install_requires = [
     "python-openid >= 2.2.0",
+    "trac >= 0.12",
     ]
 
 if sys.version_info[:2] < (2,6):
