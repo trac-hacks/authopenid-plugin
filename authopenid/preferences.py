@@ -82,7 +82,7 @@ class OpenIDPreferencePanel(Component):
         try:
             return self.openid_consumer.begin(req, oid_identifier, return_to)
         except DiscoveryFailure as exc:
-            chrome.add_warning(req, exc)
+            chrome.add_warning(req, escape("Discovery failure: %s") % str(exc))
             return self._panel(req)
 
     def _do_openid_response(self, req):
@@ -101,7 +101,7 @@ class OpenIDPreferencePanel(Component):
         except OpenIDIdentifierInUse as exc:
             self.log.warning("/openid/associate: %s", exc)
             chrome.add_warning(
-                req, escape("OpenID %s is already associated by another user")
+                req, escape("OpenID %s is already associated with another user")
                 % tag.code(identifier))
         except UserNotFound as exc:
             self.log.warning("/openid/associate: %s", exc)
@@ -132,8 +132,8 @@ class OpenIDPreferencePanel(Component):
 
     def _panel(self, req):
         # FIXME:
-        fancy_selector = AuthOpenIdPlugin(self.env).fancy_selector
-
+        fancy_selector = getattr(AuthOpenIdPlugin(self.env), 'fancy_selector',
+                                 None)
         data = {
             'openid_identifiers':
             self.identifier_store.get_identifiers(req.authname),
