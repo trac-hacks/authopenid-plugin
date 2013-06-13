@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007 Dalius Dobravolskas <dalius@sandbox.lt>
+# Copyright (C) 2007-2013 Dalius Dobravolskas and Geoffrey T. Dairiki
 # All rights reserved.
 #
 # This software is licensed using the same licence as Trac:
 # http://trac.edgewall.org/wiki/TracLicense.
 #
-# Author: Dalius Dobravolskas <dalius@sandbox.lt>
-#
+# Original Author: Dalius Dobravolskas <dalius@sandbox.lt>
+# Current Maintainer: Jeff Dairiki <dairiki@dairiki.org>
+
 # Most probably you will want to add following lines to your configuration file:
 #
 #   [components]
@@ -22,7 +23,7 @@ import time
 import itertools
 
 from trac.core import *
-from trac.config import Option, BoolOption, IntOption
+from trac.config import Option, BoolOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
@@ -141,7 +142,7 @@ class AuthOpenIdPlugin(Component):
     trust_authname = BoolOption('openid', 'trust_authname', False,
             """WARNING: Only enable this if you know what this mean!
             This could make identity theft very easy if you do not control the OpenID provider!
-            Enabling this option makes the retrieved authname from the 
+            Enabling this option makes the retrieved authname from the
             OpenID provider authorative, i.e. it trusts the authname
             to be the unique username of the user. Enabling this disables
             the collission checking, so two different OpenID urls may
@@ -607,13 +608,14 @@ class AuthOpenIdPlugin(Component):
                     if item.match(remote_user):
                         allowed = False
                         self.env.log.debug("User black-listed.")
-            if allowed and email and self.re_email_white_list:
-                self.env.log.debug("Filtering email '%s' through email white-list." % email)
+            if allowed and self.re_email_white_list:
+                self.env.log.debug("Filtering email %r through email white-list." % email)
                 allowed = False
-                for item in self.re_email_white_list:
-                    if not allowed and item.match(email):
-                        allowed = True
-                        self.env.log.debug("User email white-listed.")
+                if email:
+                    for item in self.re_email_white_list:
+                        if not allowed and item.match(email):
+                            allowed = True
+                            self.env.log.debug("User email white-listed.")
 
             if allowed and self.check_list:
                 allowed = False

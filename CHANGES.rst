@@ -2,6 +2,45 @@
 Changes
 =======
 
+Next Version
+============
+
+Bug Fixes
+---------
+
+- Previously, if no email address was returned via AX or SREG, the
+  ``email_white_list`` config option was being ignored.  Now if
+  ``email_white_list`` is set and no email address can be determined,
+  authorization will be denied.
+
+Documentation
+-------------
+
+- Updated the example config in the README__ so that it more closely
+  matches current reality.  (Baby steps...)
+
+__ https://github.com/dairiki/authopenid-plugin#options
+
+Version 0.4.3 (2013-05-22)
+==========================
+
+Bug Fixes
+---------
+
+- Fix so that ``check_list_username`` actually works.  Now one can
+  actually use the ``check_list`` web API to implement custom identity
+  to username mapping.
+
+- Fall back to using the identifier URL as the authname (rather than
+  throwing an exception) if the OpenID provider did not return a full
+  name (or nickname).
+
+Packaging
+---------
+
+- README.rst: Patrick Uiterwijk has packaged this plugin for Fedora
+
+
 Version 0.4.2 (2013-03-24)
 ==========================
 

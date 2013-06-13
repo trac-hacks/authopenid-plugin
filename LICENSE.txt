@@ -1,4 +1,4 @@
-Copyright (C) 2007-2012 Dalius Dobravolskas and Geoffrey T. Dairiki
+Copyright (C) 2007-2013 Dalius Dobravolskas and Geoffrey T. Dairiki
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
