@@ -11,7 +11,6 @@ CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
 
 install_requires = [
     "python-openid >= 2.1.0",
-    'python-openid-teams',
     ]
 
 if sys.version_info[:2] < (2,6):

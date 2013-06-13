@@ -42,7 +42,11 @@ from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
 from openid.extensions import sreg, pape, ax
-import openid_teams.teams
+try:
+    import openid_teams.teams
+    groups_available = True
+except ImportError:
+    groups_available = False
 
 from openid import oidutil
 
@@ -487,7 +491,7 @@ class AuthOpenIdPlugin(Component):
                 request.addExtension(sreg_request)
 
                 # If we ask for any groups, add them to the request
-                if get_groups != '':
+                if get_groups != '' and groups_available:
                     get_groups_list = get_groups.split(',')
                     teams_request = teams.TeamsRequest(requested=get_groups_list)
                     request.addExtension(teams_request)
@@ -555,9 +559,10 @@ class AuthOpenIdPlugin(Component):
 
             sreg_info = sreg.SRegResponse.fromSuccessResponse(info) or {}
 
-            groups_info = teams.TeamsResponse.fromSuccessResponse(info)
-            if groups_info:
-                req.session['groups'] = groups_info.teams
+            if groups_available:
+                groups_info = teams.TeamsResponse.fromSuccessResponse(info)
+                if groups_info:
+                    req.session['groups'] = groups_info.teams
 
             ax_response = ax.FetchResponse.fromSuccessResponse(info)
             ax_info = {}
