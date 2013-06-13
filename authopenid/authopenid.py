@@ -254,9 +254,6 @@ class AuthOpenIdPlugin(Component):
     # IPermissionGroupProvider methods
     def get_permission_groups(self, username):
         ds = DetachedSession(self.env, authname)
-        if ds.last_visit == 0 and len(ds) == 0:
-            # At least in 0.12.2, this mean no session exists.
-            return []
         ds_groups = ds.get('groups')
         if ds_groups:
             return ds_groups.split(',')
