@@ -27,6 +27,7 @@ from trac.config import Option, BoolOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
+from trac.perm import IPermissionGroupProvider
 from trac.web.session import DetachedSession
 try:
     from acct_mgr.web_ui import LoginModule
@@ -41,6 +42,11 @@ from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
 from openid.extensions import sreg, pape, ax
+try:
+    import openid_teams.teams
+    groups_available = True
+except ImportError:
+    groups_available = False
 
 from openid import oidutil
 
@@ -74,7 +80,8 @@ class AuthOpenIdPlugin(Component):
         lastname='http://axschema.org/namePerson/last',
         )
 
-    implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant)
+    implements(INavigationContributor, IRequestHandler, ITemplateProvider, IAuthenticator, IEnvironmentSetupParticipant,
+        IPermissionGroupProvider)
 
     # Do not declare options in the [trac] section.  We should not
     # be creating new declared options there, and we should not be
@@ -193,6 +200,10 @@ class AuthOpenIdPlugin(Component):
     custom_provider_size = Option('openid', 'custom_provider_size', 'small',
             """ Custom OpenId provider image size (small or large).""")
 
+    get_groups = Option('openid', 'groups_to_request', '',
+            """Groups""")
+
+
 
     def _get_masked_address(self, address):
         if self.check_ip:
@@ -243,6 +254,16 @@ class AuthOpenIdPlugin(Component):
         store = self._getStore(db)
         if type(store) is not MemoryStore:
             store.createTables()
+
+    # IPermissionGroupProvider methods
+    def get_permission_groups(self, username):
+        ds = DetachedSession(self.env, authname)
+        ds_groups = ds.get('groups')
+        if ds_groups:
+            return ds_groups.split(',')
+        else:
+            return []
+
 
     # IEnvironmentSetupParticipant methods
 
@@ -469,6 +490,15 @@ class AuthOpenIdPlugin(Component):
                 sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
+                # If we ask for any groups, add them to the request
+                if self.get_groups != '':
+                    if not groups_available:
+                        self.env.log.error('get_groups set, but python-openid-teams was not loaded!')
+                    else:
+                        get_groups_list = self.get_groups.split(',')
+                        teams_request = teams.TeamsRequest(requested=get_groups_list)
+                        request.addExtension(teams_request)
+
                 ax_request = ax.FetchRequest()
                 for alias, uri in self.openid_ax_attrs.items():
                     attr_info = ax.AttrInfo(uri, required=True, alias=alias)
@@ -531,6 +561,11 @@ class AuthOpenIdPlugin(Component):
             remote_user = info.identity_url
 
             sreg_info = sreg.SRegResponse.fromSuccessResponse(info) or {}
+
+            if groups_available:
+                groups_info = teams.TeamsResponse.fromSuccessResponse(info)
+                if groups_info:
+                    req.session['groups'] = groups_info.teams
 
             ax_response = ax.FetchResponse.fromSuccessResponse(info)
             ax_info = {}
