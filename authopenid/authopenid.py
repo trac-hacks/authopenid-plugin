@@ -46,6 +46,7 @@ try:
     import openid_teams.teams
     groups_available = True
 except ImportError:
+    
     groups_available = False
 
 from openid import oidutil
@@ -491,10 +492,13 @@ class AuthOpenIdPlugin(Component):
                 request.addExtension(sreg_request)
 
                 # If we ask for any groups, add them to the request
-                if get_groups != '' and groups_available:
-                    get_groups_list = get_groups.split(',')
-                    teams_request = teams.TeamsRequest(requested=get_groups_list)
-                    request.addExtension(teams_request)
+                if get_groups !=:
+                    if not groups_available:
+                        self.env.log.error('get_groups set, but python-openid-teams was not loaded!')
+                    else:
+                        get_groups_list = get_groups.split(',')
+                        teams_request = teams.TeamsRequest(requested=get_groups_list)
+                        request.addExtension(teams_request)
 
                 ax_request = ax.FetchRequest()
                 for alias, uri in self.openid_ax_attrs.items():
