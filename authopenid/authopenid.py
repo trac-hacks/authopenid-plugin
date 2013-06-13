@@ -491,7 +491,7 @@ class AuthOpenIdPlugin(Component):
                 request.addExtension(sreg_request)
 
                 # If we ask for any groups, add them to the request
-                if self.get_groups != ''
+                if self.get_groups != '':
                     if not groups_available:
                         self.env.log.error('get_groups set, but python-openid-teams was not loaded!')
                     else:
