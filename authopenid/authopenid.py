@@ -46,7 +46,6 @@ try:
     import openid_teams.teams
     groups_available = True
 except ImportError:
-    
     groups_available = False
 
 from openid import oidutil
