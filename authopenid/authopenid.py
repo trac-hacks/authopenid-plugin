@@ -495,7 +495,7 @@ class AuthOpenIdPlugin(Component):
                     if not groups_available:
                         self.env.log.error('get_groups set, but python-openid-teams was not loaded!')
                     else:
-                        get_groups_list = get_groups.split(',')
+                        get_groups_list = self.get_groups.split(',')
                         teams_request = teams.TeamsRequest(requested=get_groups_list)
                         request.addExtension(teams_request)
 
