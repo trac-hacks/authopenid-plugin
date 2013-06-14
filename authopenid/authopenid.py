@@ -53,16 +53,6 @@ class AuthOpenIdPlugin(Component):
     default_openid = Option('openid', 'default_openid', None,
             """Default OpenID provider for directed identity.""")
 
-    # FIXME: move these
-    check_list = Option('openid', 'check_list', None,
-            """JSON service for openid check.""")
-
-    check_list_key = Option('openid', 'check_list_key', 'check_list',
-            """Key for openid Service.""")
-
-    check_list_username = Option('openid', 'check_list_username', None,
-            """Username for openid Service.""")
-
 
     fancy_selector = ExtensionOption(
         'openid', 'fancy_selector', IOpenIDFancySelector,

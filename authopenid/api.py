@@ -139,9 +139,7 @@ class IOpenIDAuthnRequestListener(Interface):
     These components can, e.g., make requests for extra information
     from the OP via OpenID extension protocols.  They can also be used
     to prevent the use of certain OpenID providers (or particular)
-    identifiers for authentication (though see also
-    :class:`IOpenIDAuthorizationPolicy` for an interface with similar
-    uses.)
+    identifiers for authentication.
 
     """
 
@@ -201,37 +199,6 @@ class IOpenIDAuthnRequestListener(Interface):
             identifier is not trusted, it can raise an
             :exc:`AuthenticationFailed` exception with an appropriate
             message.
-        """
-
-# FIXME: delete
-class IOpenIDAuthorizationPolicy(Interface):
-    """ Provides support for authorizing OpenID users.
-
-    An authorization policy checks the user's identity (as returned
-    by a successful OpenID authentication request) to determine whether
-    log-in should be allowed to proceed.
-
-    """
-
-    def authorize(req, identifier):
-        """ Determine with user is authorized to log in.
-
-        All of the configured authorization policies will be called to
-        check whether the user is authorized to use this site.  If any
-        of the policies raises :exc:`NotAuthorized`, or if no policy
-        returns a true value, authorization will be denied; otherwise if
-        any of the policies returns a true value, access will be granted.
-
-        :type req: :class:`trac.web.api.Request`
-        :type identifier: :class:`IOpenIDIdentifier`
-
-        :returns: True if the user is authorized to create a new
-            account.  If the policy returns ``False``, it does not
-            make any particular claims about the authorization of the
-            user.
-
-        :raises: :exc:`NotAuthorized` if the user is not authorized
-
         """
 
 class IOpenIDRegistrationParticipant(Interface):
