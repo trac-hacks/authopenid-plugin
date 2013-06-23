@@ -357,7 +357,7 @@ class AuthOpenIdPlugin(Component):
             'custom_provider_size': self.custom_provider_size,
             }, None
 
-    def _get_session(self, req):
+    def _get_oidsession(self, req):
         """Returns a session dict that can store any kind of object."""
         try:
             return cPickle.loads(str(req.session[self.openid_session_key]))
@@ -376,11 +376,11 @@ class AuthOpenIdPlugin(Component):
 
         return base_url
 
-    def _commit_session(self, session, req):
-        req.session[self.openid_session_key] = str(cPickle.dumps(session))
+    def _commit_oidsession(self, oidsession, req):
+        req.session[self.openid_session_key] = str(cPickle.dumps(oidsession))
 
     def _get_consumer(self, req, db):
-        s = self._get_session(req)
+        s = self._get_oidsession(req)
         if 'id' not in s:
             s['id'] = req.session.sid
         store = self._getStore(db)
@@ -415,7 +415,7 @@ class AuthOpenIdPlugin(Component):
         immediate = 'immediate' in req.args
 
         db = self.env.get_db_cnx()
-        oidconsumer, session = self._get_consumer(req, db)
+        oidconsumer, oidsession = self._get_consumer(req, db)
         try:
             self.env.log.debug('beginning OpenID authentication.')
             request = oidconsumer.begin(openid_url)
@@ -455,7 +455,7 @@ class AuthOpenIdPlugin(Component):
                     'custom_provider_size': self.custom_provider_size,
                    }, None
             else:
-                self._commit_session(session, req)
+                self._commit_oidsession(oidsession, req)
                 # Then, ask the library to begin the authorization.
                 # Here we find out the identity server that will verify the
                 # user's identity, and get a token that allows us to
@@ -528,7 +528,7 @@ class AuthOpenIdPlugin(Component):
         """Handle the redirect from the OpenID server.
         """
         db = self.env.get_db_cnx()
-        oidconsumer, session = self._get_consumer(req, db)
+        oidconsumer, oidsession = self._get_consumer(req, db)
 
         # Ask the library to check the response that the server sent
         # us.  Status is a code indicating the response type. info is
@@ -658,7 +658,7 @@ class AuthOpenIdPlugin(Component):
                 if fullname:
                     req.session['name'] = fullname
 
-                self._commit_session(session, req)
+                self._commit_oidsession(oidsession, req)
 
                 if self.check_list and self.check_list_username:
                     authname = cl_username
@@ -730,7 +730,7 @@ class AuthOpenIdPlugin(Component):
             # information in a log.
             message = 'Verification failed.'
 
-        self._commit_session(session, req)
+        self._commit_oidsession(oidsession, req)
 
         add_stylesheet(req, 'authopenid/css/openid.css')
         add_script(req, 'authopenid/js/openid-jquery.js')
