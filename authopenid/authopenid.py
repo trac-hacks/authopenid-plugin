@@ -550,6 +550,8 @@ class AuthOpenIdPlugin(Component):
             # the verification.
             css_class = 'alert'
 
+            session_attr = {}           # attributes for new "user"
+
             # This is a successful verification attempt. If this
             # was a real application, we would do our login,
             # comment posting, etc. here.
@@ -586,7 +588,7 @@ class AuthOpenIdPlugin(Component):
                     teams = set(teams_response.teams
                                 ).intersection(self.groups_to_request)
                     if teams:
-                        req.session['openid.teams'] = ','.join(teams)
+                        session_attr['openid.teams'] = ','.join(teams)
 
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
@@ -652,11 +654,11 @@ class AuthOpenIdPlugin(Component):
                 if cookie_lifetime > 0:
                     req.outcookie['trac_auth']['expires'] = cookie_lifetime
 
-                req.session[self.openid_session_identity_url_key] = info.identity_url
+                session_attr[self.openid_session_identity_url_key] = info.identity_url
                 if email:
-                    req.session['email'] = email
+                    session_attr['email'] = email
                 if fullname:
-                    req.session['name'] = fullname
+                    session_attr['name'] = fullname
 
                 self._commit_oidsession(oidsession, req)
 
@@ -664,8 +666,8 @@ class AuthOpenIdPlugin(Component):
                     authname = cl_username
                 elif self.use_nickname_as_authname and nickname:
                     authname = nickname
-                elif req.session.get('name'):
-                    authname = req.session['name']
+                elif session_attr.get('name'):
+                    authname = session_attr['name']
                     if self.combined_username:
                         authname = '%s <%s>' % (authname, remote_user)
                 else:
@@ -675,11 +677,13 @@ class AuthOpenIdPlugin(Component):
                 if self.lowercase_authname:
                     authname = authname.lower()
 
-                if not self.trust_authname:
+                if self.trust_authname:
+                    ds = DetachedSession(self.env, authname)
+                else:
                     # Make authname unique in case of collisions
                     #
                     # XXX: We ought to first look for an existing authenticated
-                    # ssession with matching identity_url, and just use that
+                    # session with matching identity_url, and just use that
                     # for the authid.  (E.g. what if the user changes his
                     # fullname at the openid provider?)  However, trac does
                     # not seem to provide an API for searching sessions other
@@ -699,6 +703,28 @@ class AuthOpenIdPlugin(Component):
                         if ds_identity == info.identity_url:
                             # No collision
                             break
+
+                if ds and (ds.last_visit != 0 or len(ds) > 0):
+                    # The user already exists, update team membership
+                    # XXX: Should also update name and/or email? (This would
+                    # be an API change.)
+                    for name in ['openid.teams']:
+                        if name in session_attr:
+                            ds[name] = session_attr[name]
+                        elif name in ds:
+                            del ds[name]
+                    ds.save()
+                else:
+                    # We are creating a new "user".  Set attributes on the
+                    # current anonymous session.  It will be promoted to
+                    # the new authenticated session on the next request
+                    # (by Session.__init__).
+                    #
+                    # NB: avoid dict.update here to ensure that
+                    # DetachedSession.__getitem__ gets a chance to
+                    # normalize values
+                    for name, value in session_attr.items():
+                        req.session[name] = value
 
                 req.authname = authname
 
