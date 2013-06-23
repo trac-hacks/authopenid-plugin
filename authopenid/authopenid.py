@@ -27,7 +27,7 @@ from trac.config import Option, BoolOption, ListOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
-from trac.perm import IPermissionGroupProvider
+from trac.perm import IPermissionGroupProvider, PermissionSystem
 from trac.web.session import DetachedSession
 try:
     from acct_mgr.web_ui import LoginModule
@@ -694,10 +694,18 @@ class AuthOpenIdPlugin(Component):
                         for attempt in itertools.count(2):
                             yield "%s (%d)" % (base, attempt)
 
+                    existing_users_and_groups = set(
+                        user
+                        for user, perm
+                        in PermissionSystem(self.env).get_all_permissions())
+
                     for authname in authnames(authname):
                         ds = DetachedSession(self.env, authname)
                         if ds.last_visit == 0 and len(ds) == 0:
                             # At least in 0.12.2, this mean no session exists.
+                            if authname in existing_users_and_groups:
+                                # Permissions are already defined for this user
+                                continue
                             break
                         ds_identity = ds.get(self.openid_session_identity_url_key)
                         if ds_identity == info.identity_url:

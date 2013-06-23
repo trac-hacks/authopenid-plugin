@@ -17,13 +17,16 @@ New Features
 .. _OpenIDTeams: https://dev.launchpad.net/OpenIDTeams
 .. _python-openid-teams: https://pypi.python.org/pypi/python-openid-teams
 
-Bug Fixes
----------
+Bug/Security Fixes
+------------------
 
 - Previously, if no email address was returned via AX or SREG, the
   ``email_white_list`` config option was being ignored.  Now if
   ``email_white_list`` is set and no email address can be determined,
   authorization will be denied.
+
+- Do not create new users with a username which already has trac permissions
+  assigned to it.  (E.g. this might be the name of a trac group.)
 
 Documentation
 -------------
