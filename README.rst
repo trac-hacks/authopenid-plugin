@@ -199,6 +199,16 @@ from an example config file which lists all available options::
     # absolute trust root.
     absolute_trust_root = false
 
+
+    # Use the OpenIDTeams extension to request user's group membership.
+    # If a user is a member of any of the teams listed in this option,
+    # the user will be added to the trac permission group(s) of the same
+    # name.  (Set to to a comma-separated list.)
+    #
+    # NOTE: To use this option, the python-openid-teams package must be
+    # installed.
+    groups_to_request =
+
     ################################################################
     # Authname (trac SID) generation
 

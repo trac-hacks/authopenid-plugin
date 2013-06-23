@@ -5,6 +5,18 @@ Changes
 Next Version
 ============
 
+New Features
+------------
+
+- (Contributed by Patrick Uiterwijk) Users can be added to trac groups
+  according to group membership provided via the OpenIDTeams_
+  extension.  Only groups listed in the new ``groups_to_request``
+  config option will be considered for possible membership.  To use
+  this feature you must install the python-openid-teams_ package.
+
+.. _OpenIDTeams: https://dev.launchpad.net/OpenIDTeams
+.. _python-openid-teams: https://pypi.python.org/pypi/python-openid-teams
+
 Bug Fixes
 ---------
 

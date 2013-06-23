@@ -60,4 +60,7 @@ setup(
         },
 
     install_requires=install_requires,
+    extras_require = {
+        'teams': ['python-openid-teams'],
+        },
     )

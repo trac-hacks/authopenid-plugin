@@ -23,7 +23,7 @@ import time
 import itertools
 
 from trac.core import *
-from trac.config import Option, BoolOption
+from trac.config import Option, BoolOption, ListOption
 from trac.web.chrome import INavigationContributor, ITemplateProvider, add_stylesheet, add_script
 from trac.env import IEnvironmentSetupParticipant
 from trac.web.main import IRequestHandler, IAuthenticator
@@ -42,13 +42,11 @@ from openid.store.memstore import MemoryStore
 
 from openid.consumer import consumer
 from openid.extensions import sreg, pape, ax
-try:
-    import openid_teams.teams
-    groups_available = True
-except ImportError:
-    groups_available = False
-
 from openid import oidutil
+try:
+    from openid_teams.teams import TeamsRequest, TeamsResponse
+except ImportError:
+    TeamsRequest = TeamsResponse = None
 
 import socket
 import struct
@@ -200,8 +198,10 @@ class AuthOpenIdPlugin(Component):
     custom_provider_size = Option('openid', 'custom_provider_size', 'small',
             """ Custom OpenId provider image size (small or large).""")
 
-    get_groups = Option('openid', 'groups_to_request', '',
-            """Groups""")
+    groups_to_request = ListOption('openid', 'groups_to_request', '',
+            doc=""" Which 'team names' to request via the OpenIDTeams extension.
+            To use this option you must have python-openid-teams installed.
+            """)
 
 
 
@@ -257,12 +257,8 @@ class AuthOpenIdPlugin(Component):
 
     # IPermissionGroupProvider methods
     def get_permission_groups(self, username):
-        ds = DetachedSession(self.env, authname)
-        ds_groups = ds.get('groups')
-        if ds_groups:
-            return ds_groups.split(',')
-        else:
-            return []
+        ds = DetachedSession(self.env, username)
+        return ds.get('openid.teams', '').split(',')
 
 
     # IEnvironmentSetupParticipant methods
@@ -490,20 +486,21 @@ class AuthOpenIdPlugin(Component):
                 sreg_request = sreg.SRegRequest(optional=sreg_opt, required=sreg_req)
                 request.addExtension(sreg_request)
 
-                # If we ask for any groups, add them to the request
-                if self.get_groups != '':
-                    if not groups_available:
-                        self.env.log.error('get_groups set, but python-openid-teams was not loaded!')
-                    else:
-                        get_groups_list = self.get_groups.split(',')
-                        teams_request = teams.TeamsRequest(requested=get_groups_list)
-                        request.addExtension(teams_request)
-
                 ax_request = ax.FetchRequest()
                 for alias, uri in self.openid_ax_attrs.items():
                     attr_info = ax.AttrInfo(uri, required=True, alias=alias)
                     ax_request.add(attr_info)
                 request.addExtension(ax_request)
+
+                if self.groups_to_request:
+                    if not TeamsRequest:
+                        self.env.log.error(
+                            'The python-openid-teams package is not installed.'
+                            ' The groups_to_request configuration option will'
+                            ' be ignored.')
+                    else:
+                        request.addExtension(
+                            TeamsRequest(requested=self.groups_to_request))
 
                 trust_root = self._get_trust_root(req)
                 if self.absolute_trust_root:
@@ -562,11 +559,6 @@ class AuthOpenIdPlugin(Component):
 
             sreg_info = sreg.SRegResponse.fromSuccessResponse(info) or {}
 
-            if groups_available:
-                groups_info = teams.TeamsResponse.fromSuccessResponse(info)
-                if groups_info:
-                    req.session['groups'] = groups_info.teams
-
             ax_response = ax.FetchResponse.fromSuccessResponse(info)
             ax_info = {}
             if ax_response:
@@ -585,6 +577,16 @@ class AuthOpenIdPlugin(Component):
                         or email.split('@',1)[0].replace('.', ' ').title())
 
             nickname = sreg_info.get('nickname')
+
+            if self.groups_to_request and TeamsResponse:
+                teams_response = TeamsResponse.fromSuccessResponse(info)
+                if teams_response:
+                    # be careful not to make user a member of any trac groups
+                    # not named in groups_to_request
+                    teams = set(teams_response.teams
+                                ).intersection(self.groups_to_request)
+                    if teams:
+                        req.session['openid.teams'] = ','.join(teams)
 
             if self.strip_protocol:
                 remote_user = remote_user[remote_user.find('://')+3:]
