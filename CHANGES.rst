@@ -2,8 +2,8 @@
 Changes
 =======
 
-Next Version
-============
+Version 0.4.4 (2013-06-23)
+==========================
 
 New Features
 ------------
@@ -27,7 +27,6 @@ Bug/Security Fixes
 
 - Do not create new users with a username which already has trac permissions
   assigned to it.  (E.g. this might be the name of a trac group.)
-
 Documentation
 -------------
 
