@@ -5,6 +5,15 @@ Changes
 Next Version
 ============
 
+Bug Fixes
+---------
+
+- Avoid ``AttributeError`` when neither name nor email is returned from
+  the OP. (Fixes `#9`_.)
+
+.. _#9: https://github.com/dairiki/authopenid-plugin/issues/9
+
+
 Version 0.4.5 (2013-06-23)
 ==========================
 

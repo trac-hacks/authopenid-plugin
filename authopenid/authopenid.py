@@ -573,10 +573,11 @@ class AuthOpenIdPlugin(Component):
                      or ax_info.get('email2')
                      or sreg_info.get('email'))
 
-            fullname = (' '.join(filter(None, map(ax_info.get,
-                                                  ('firstname', 'lastname'))))
-                        or sreg_info.get('fullname')
-                        or email.split('@',1)[0].replace('.', ' ').title())
+            fullname = (
+                ' '.join(filter(None, map(ax_info.get,
+                                          ('firstname', 'lastname'))))
+                or sreg_info.get('fullname')
+                or (email and email.split('@',1)[0].replace('.', ' ').title()))
 
             nickname = sreg_info.get('nickname')
 
