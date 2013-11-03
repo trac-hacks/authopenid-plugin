@@ -524,6 +524,38 @@ class AuthOpenIdPlugin(Component):
                         'form': form_html
                        }, None
 
+    def get_user(self, openid_identifier):
+        """ Look up username by OpenID identifier
+
+        In the case that multiple users match, the one who has most
+        recently logged in will be returned.
+
+        :returns: username or ``None``.
+        """
+        db = self.env.get_db_cnx()
+        cursor = db.cursor()
+        cursor.execute("SELECT session.sid"
+                  " FROM session"
+                  " INNER JOIN session_attribute AS attr"
+                  "                  USING(sid, authenticated)"
+                  " WHERE session.authenticated=%s"
+                  "       AND attr.name=%s AND attr.value=%s"
+                  " ORDER BY session.last_visit DESC",
+                  (1, self.openid_session_identity_url_key, openid_identifier))
+        rows = cursor.fetchall()
+        if len(rows) == 0:
+            return None
+        elif len(rows) > 1:
+            # Multiple users matched.  (We will return the one who most
+            # recently logged in.)
+
+            # FIXME: Probably should provide a config option which
+            # controls whether this is a error or not.
+            self.log.warning(
+                "Multiple users share the same openid identifier: %s",
+                ', '.join("'%s'" % user for (user,) in rows))
+        return rows[0][0]
+
     def _do_process(self, req):
         """Handle the redirect from the OpenID server.
         """
@@ -664,57 +696,13 @@ class AuthOpenIdPlugin(Component):
 
                 self._commit_oidsession(oidsession, req)
 
-                if self.check_list and self.check_list_username:
-                    authname = cl_username
-                elif self.use_nickname_as_authname and nickname:
-                    authname = nickname
-                elif session_attr.get('name'):
-                    authname = session_attr['name']
-                    if self.combined_username:
-                        authname = '%s <%s>' % (authname, remote_user)
-                else:
-                    authname = remote_user
-
-                # Possibly lower-case the authname.
-                if self.lowercase_authname:
-                    authname = authname.lower()
-
-                if self.trust_authname:
+                # First look for an existing authenticated session with
+                # matching identity_url.
+                self.env.log.debug('Checking URL: %s' % info.identity_url)
+                authname_for_identity_url = self.get_user(info.identity_url)
+                if authname_for_identity_url:
+                    authname = authname_for_identity_url
                     ds = DetachedSession(self.env, authname)
-                else:
-                    # Make authname unique in case of collisions
-                    #
-                    # XXX: We ought to first look for an existing authenticated
-                    # session with matching identity_url, and just use that
-                    # for the authid.  (E.g. what if the user changes his
-                    # fullname at the openid provider?)  However, trac does
-                    # not seem to provide an API for searching sessions other
-                    # than by sid/authname.
-                    #
-                    def authnames(base):
-                        yield base
-                        for attempt in itertools.count(2):
-                            yield "%s (%d)" % (base, attempt)
-
-                    existing_users_and_groups = set(
-                        user
-                        for user, perm
-                        in PermissionSystem(self.env).get_all_permissions())
-
-                    for authname in authnames(authname):
-                        ds = DetachedSession(self.env, authname)
-                        if ds.last_visit == 0 and len(ds) == 0:
-                            # At least in 0.12.2, this mean no session exists.
-                            if authname in existing_users_and_groups:
-                                # Permissions are already defined for this user
-                                continue
-                            break
-                        ds_identity = ds.get(self.openid_session_identity_url_key)
-                        if ds_identity == info.identity_url:
-                            # No collision
-                            break
-
-                if ds and (ds.last_visit != 0 or len(ds) > 0):
                     # The user already exists, update team membership
                     # XXX: Should also update name and/or email? (This would
                     # be an API change.)
@@ -725,16 +713,58 @@ class AuthOpenIdPlugin(Component):
                             del ds[name]
                     ds.save()
                 else:
-                    # We are creating a new "user".  Set attributes on the
-                    # current anonymous session.  It will be promoted to
-                    # the new authenticated session on the next request
-                    # (by Session.__init__).
-                    #
-                    # NB: avoid dict.update here to ensure that
-                    # DetachedSession.__getitem__ gets a chance to
-                    # normalize values
-                    for name, value in session_attr.items():
-                        req.session[name] = value
+                    # New identity URL -> create new authname/user.
+                    if self.check_list and self.check_list_username:
+                        authname = cl_username
+                    elif self.use_nickname_as_authname and nickname:
+                        authname = nickname
+                    elif session_attr.get('name'):
+                        authname = session_attr['name']
+                        if self.combined_username:
+                            authname = '%s <%s>' % (authname, remote_user)
+                    else:
+                        authname = remote_user
+
+                    # Possibly lower-case the authname.
+                    if self.lowercase_authname:
+                        authname = authname.lower()
+
+                    if self.trust_authname:
+                        ds = DetachedSession(self.env, authname)
+                    else:
+                        # Make authname unique in case of collisions
+                        def authnames(base):
+                            yield base
+                            for attempt in itertools.count(2):
+                                yield "%s (%d)" % (base, attempt)
+
+                        existing_users_and_groups = set(
+                            user
+                            for user, perm
+                            in PermissionSystem(self.env).get_all_permissions())
+
+                        for authname in authnames(authname):
+                            ds = DetachedSession(self.env, authname)
+                            if ds.last_visit == 0 and len(ds) == 0:
+                                # At least in 0.12.2, this mean no session exists.
+                                if authname in existing_users_and_groups:
+                                    # Permissions are already defined for this user
+                                    continue
+                                break
+                            ds_identity = ds.get(self.openid_session_identity_url_key)
+                            if ds_identity == info.identity_url:
+                                # No collision
+                                break
+                        # Set attributes for new user on the
+                        # current anonymous session.  It will be promoted to
+                        # the new authenticated session on the next request
+                        # (by Session.__init__).
+                        #
+                        # NB: avoid dict.update here to ensure that
+                        # DetachedSession.__getitem__ gets a chance to
+                        # normalize values
+                        for name, value in session_attr.items():
+                            req.session[name] = value
 
                 req.authname = authname
 
