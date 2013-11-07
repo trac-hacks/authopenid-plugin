@@ -765,6 +765,8 @@ class AuthOpenIdPlugin(Component):
                         # normalize values
                         for name, value in session_attr.items():
                             req.session[name] = value
+                        self.env.log.info("Created new user '%s' for "
+                            "OpenID identifier %s", authname, info.identity_url)
 
                 req.authname = authname
 
