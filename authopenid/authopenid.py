@@ -147,8 +147,8 @@ class AuthOpenIdPlugin(Component):
             Enabling this option makes the retrieved authname from the
             OpenID provider authorative, i.e. it trusts the authname
             to be the unique username of the user. Enabling this disables
-            the collission checking, so two different OpenID urls may
-            suddenly get the same username if they have the same authname""")
+            the collision checking, so it may be possible to take over
+            an existing username or permission group.""")
 
     pape_method = Option('openid', 'pape_method', None,
             """Default PAPE method to request from OpenID provider.""")
