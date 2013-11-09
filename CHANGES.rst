@@ -5,6 +5,14 @@ Changes
 Next Version
 ============
 
+Bug Fixes
+---------
+
+- Avoid ``KeyError: 'openid.return_to'`` error when user cancels verification.
+  (Fix__ by @sleske)
+
+__ https://github.com/dairiki/authopenid-plugin/pull/16
+
 Version 0.4.6 (2013-06-27)
 ==========================
 
