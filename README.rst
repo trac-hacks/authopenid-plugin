@@ -272,8 +272,9 @@ Authors
 
 This plugin was written by `Dalius Dobravolskas`_.
 It is currently being maintained by `Jeff Dairiki`_.
-Other contributors include: `Patrick Uiterwijk`_.
+Other contributors include: `Patrick Uiterwijk`_ and `@sleske`_.
 
 .. _Jeff Dairiki: mailto:dairiki@dairiki.org
 .. _Dalius Dobravolskas: mailto:dalius@sandbox.lt
 .. _Patrick Uiterwijk: https://github.com/puiterwijk
+.. _@sleske: https://github.com/sleske

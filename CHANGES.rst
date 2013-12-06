@@ -2,8 +2,8 @@
 Changes
 =======
 
-Next Version
-============
+Version 0.4.7 (2013-12-06)
+==========================
 
 Bug Fixes
 ---------
@@ -23,7 +23,7 @@ __ https://github.com/dairiki/authopenid-plugin/pull/16
   identifier. In that case the user will now always be logged into the
   username that was last used, and a warning will be logged ("Multiple
   users share the same openid identifier"). You should probably clean up
-  these "duplicate" usernames (usually by joining them).
+  these "duplicate" usernames (usually by joining them). (Fix by @sleske)
 
 .. _#14: https://github.com/dairiki/authopenid-plugin/issues/14
 
