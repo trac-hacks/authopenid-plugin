@@ -13,6 +13,21 @@ Bug Fixes
 
 __ https://github.com/dairiki/authopenid-plugin/pull/16
 
+- On login, first try to look up the username by the supplied OpenID
+  identifier. Only create a (new) username if the lookup fails. Thus
+  returning users will no longer get a new username if the data returned
+  by their OpenID provider changes. (Fixes `#14`_.)
+  Note that previous releases would create a new username with the same
+  OpenID identifier in this case. If that has happened in your
+  installation, there will be multiple usernames with the same OpenID
+  identifier. In that case the user will now always be logged into the
+  username that was last used, and a warning will be logged ("Multiple
+  users share the same openid identifier"). You should probably clean up
+  these "duplicate" usernames (usually by joining them).
+
+.. _#14: https://github.com/dairiki/authopenid-plugin/issues/14
+
+
 Version 0.4.6 (2013-06-27)
 ==========================
 
