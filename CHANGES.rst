@@ -5,6 +5,13 @@ Changes
 Next Version
 ============
 
+- The github repository has been transfered to the trac-hacks_
+  organization.  Nothing has changed except the github URLs (and the
+  old URLs should continue to work.)
+
+.. _trac-hacks: https://github.com/trac-hacks
+
+
 Version 0.4.7 (2013-12-06)
 ==========================
 
@@ -14,7 +21,7 @@ Bug Fixes
 - Avoid ``KeyError: 'openid.return_to'`` error when user cancels verification.
   (Fix__ by @sleske)
 
-__ https://github.com/dairiki/authopenid-plugin/pull/16
+__ https://github.com/trac-hacks/authopenid-plugin/pull/16
 
 - On login, first try to look up the username by the supplied OpenID
   identifier. Only create a (new) username if the lookup fails. Thus
@@ -28,7 +35,7 @@ __ https://github.com/dairiki/authopenid-plugin/pull/16
   users share the same openid identifier"). You should probably clean up
   these "duplicate" usernames (usually by joining them). (Fix by @sleske)
 
-.. _#14: https://github.com/dairiki/authopenid-plugin/issues/14
+.. _#14: https://github.com/trac-hacks/authopenid-plugin/issues/14
 
 
 Version 0.4.6 (2013-06-27)
@@ -40,7 +47,7 @@ Bug Fixes
 - Avoid ``AttributeError`` when neither name nor email is returned from
   the OP. (Fixes `#9`_.)
 
-.. _#9: https://github.com/dairiki/authopenid-plugin/issues/9
+.. _#9: https://github.com/trac-hacks/authopenid-plugin/issues/9
 
 
 Version 0.4.5 (2013-06-23)
@@ -81,7 +88,7 @@ Documentation
 - Updated the example config in the README__ so that it more closely
   matches current reality.  (Baby steps...)
 
-__ https://github.com/dairiki/authopenid-plugin#options
+__ https://github.com/trac-hacks/authopenid-plugin#options
 
 Version 0.4.3 (2013-05-22)
 ==========================
@@ -179,7 +186,7 @@ Jeff Dairiki has taken over maintenance of this plugin from
 the original author, Dalius Dobravolskas (who no longer uses trac.)
 
 The source repository for the plugin has moved to
-https://github.com/dairiki/authopenid-plugin.
+https://github.com/trac-hacks/authopenid-plugin.
 
 New Features
 ------------

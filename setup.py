@@ -39,7 +39,7 @@ setup(
     author_email='dalius@sandbox.lt',
     maintainer='Jeff Dairiki',
     maintainer_email='dairiki@dairiki.org',
-    url='https://github.com/dairiki/authopenid-plugin/',
+    url='https://github.com/trac-hacks/authopenid-plugin/',
     license='Trac license (BSD-like)',
 
     packages=['authopenid'],

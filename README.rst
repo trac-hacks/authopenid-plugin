@@ -17,7 +17,7 @@ Download & Source
 The source repository is on github__.
 You may submit bug reports and pull requests there.
 
-__ https://github.com/dairiki/authopenid-plugin/
+__ https://github.com/trac-hacks/authopenid-plugin/
 
 There are several ways to install this plugin.
 
@@ -51,7 +51,7 @@ __ https://apps.fedoraproject.org/packages/trac-authopenid-plugin
 4. You can clone git repository somewhere in your system::
 
        cd /your/3rdparty/src
-       git clone git://github.com/dairiki/authopenid-plugin.git
+       git clone git://github.com/trac-hacks/authopenid-plugin.git
 
    Then you should do following steps::
 
@@ -61,7 +61,7 @@ __ https://apps.fedoraproject.org/packages/trac-authopenid-plugin
    Alternatively, if you use pip_, you can  install directly from the git
    repository::
 
-       pip install git+git://github.com/dairiki/authopenid-plugin.git
+       pip install git+git://github.com/trac-hacks/authopenid-plugin.git
 
 For any of the above methods, if you want to do a system-wide
 installation, you will have to do this with *root* permissions
