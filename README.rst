@@ -11,6 +11,16 @@ Version 0.4 of this plugin runs under trac 1.0 (formerly 0.13), but
 this configuration has not yet been extensively tested or used in
 production.
 
+Alternatives
+============
+
+Note that, as of mid-June, 2015, Google no longer supports authentication
+using *OpenID 2.0*.  If you goal is to authenticate against Google, you might
+be interested in the trac-oidc_ plugin.  (Also see ticket `#29`_.)
+
+.. _trac-oidc: https://github.com/dairiki/trac-oidc
+.. _#29: https://github.com/trac-hacks/authopenid-plugin/issues/29
+
 Download & Source
 =================
 
